@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 
 type GoalSchedule = {
   day_of_week: number;
@@ -302,12 +303,12 @@ export default async function TodayPage() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="w-full rounded-2xl bg-white px-5 py-3.5 text-sm font-semibold text-[#45634c] transition hover:bg-[#f2f6f2]"
-              >
+                <Link
+                href="/focus"
+                className="block w-full rounded-2xl bg-white px-5 py-3.5 text-center text-sm font-semibold text-[#45634c] transition hover:bg-[#f2f6f2]"
+                >
                 Start Focus
-              </button>
+                </Link>
 
               <p className="mt-4 text-center text-xs text-white/50">
                 {focusMinutes} min focus · {breakMinutes} min break

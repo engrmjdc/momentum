@@ -38,7 +38,7 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  const protectedRoutes = ["/today"];
+  const protectedRoutes = ["/today", "/focus"];
   const authRoutes = ["/login", "/signup"];
 
   const isProtectedRoute = protectedRoutes.some(
