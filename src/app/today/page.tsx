@@ -1,7 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+
 import GoalCompletionButton from "./goal-completion-button";
+
+import { createClient } from "@/lib/supabase/server";
+
+import {
+  formatLocalDate,
+  getLocalDayOfWeek,
+  getLocalDayRange,
+  getLocalHour,
+  getLocalWeekRange,
+} from "@/lib/date-utils";
 
 type GoalSchedule = {
   day_of_week: number;
@@ -12,17 +22,27 @@ type Goal = {
   id: string;
   name: string;
   icon: string | null;
+
   measurement_type:
     | "sessions"
     | "minutes"
     | "count";
+
   weekly_target: number;
-  default_duration_minutes: number | null;
+
+  default_duration_minutes:
+    | number
+    | null;
+
   goal_schedules: GoalSchedule[];
 };
 
 type FocusPreference = {
-  preset: "pomodoro" | "deep" | "custom";
+  preset:
+    | "pomodoro"
+    | "deep"
+    | "custom";
+
   custom_focus_minutes: number;
   custom_break_minutes: number;
 };
@@ -30,10 +50,12 @@ type FocusPreference = {
 type FocusSession = {
   goal_id: string | null;
   actual_duration_seconds: number;
+
   status:
     | "in_progress"
     | "completed"
     | "cancelled";
+
   completed_at: string | null;
 };
 
@@ -48,18 +70,15 @@ type GoalProgress = {
   percentage: number;
 };
 
-const WEEKDAY_MAP: Record<string, number> = {
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-  Sun: 7,
+type TodayProgress = {
+  value: number;
+  target: number;
+  completed: boolean;
 };
 
 export default async function TodayPage() {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
     data: { user },
@@ -70,48 +89,73 @@ export default async function TodayPage() {
   }
 
   /*
-   * Load the user's profile first because the timezone
-   * determines today's schedule and the weekly range.
+   * PROFILE
    */
-  const { data: profile } = await supabase
+
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from("profiles")
-    .select("display_name, timezone")
+    .select(
+      `
+        display_name,
+        timezone
+      `
+    )
     .eq("id", user.id)
     .single();
 
+  if (profileError) {
+    console.error(
+      "Unable to load profile:",
+      profileError
+    );
+  }
+
   const timezone =
-    profile?.timezone || "Asia/Manila";
+    profile?.timezone ||
+    "Asia/Manila";
 
   const now = new Date();
 
   /*
-   * Determine the user's local weekday.
+   * LOCAL DATE BOUNDARIES
    */
-  const weekday =
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      weekday: "short",
-    }).format(now);
 
-  const dayOfWeek = WEEKDAY_MAP[weekday];
+  const dayOfWeek =
+    getLocalDayOfWeek(
+      now,
+      timezone
+    );
+
+  const dayRange =
+    getLocalDayRange(
+      now,
+      timezone
+    );
+
+  const weekRange =
+    getLocalWeekRange(
+      now,
+      timezone
+    );
 
   /*
-   * Monday -> next Monday.
+   * LOAD DASHBOARD DATA
    */
-  const weekRange = getWeekRange(
-    now,
-    timezone
-  );
 
-  /*
-   * Load all dashboard data concurrently.
-   */
   const [
-    { data: goalsData },
-    { data: focusPreferenceData },
-    { data: focusSessionsData },
-    { data: goalCompletionsData },
+    goalsResult,
+    preferenceResult,
+    weeklyFocusResult,
+    weeklyCompletionResult,
+    todayFocusResult,
+    todayCompletionResult,
   ] = await Promise.all([
+    /*
+     * Active goals + schedules.
+     */
     supabase
       .from("goals")
       .select(`
@@ -128,34 +172,53 @@ export default async function TodayPage() {
       `)
       .eq("user_id", user.id)
       .eq("is_active", true)
-      .order("created_at", {
-        ascending: true,
-      }),
+      .order(
+        "created_at",
+        {
+          ascending: true,
+        }
+      ),
 
+    /*
+     * Focus preference.
+     */
     supabase
-      .from("focus_preferences")
+      .from(
+        "focus_preferences"
+      )
       .select(`
         preset,
         custom_focus_minutes,
         custom_break_minutes
       `)
-      .eq("user_id", user.id)
+      .eq(
+        "user_id",
+        user.id
+      )
       .maybeSingle(),
 
     /*
-     * Only completed focus sessions contribute toward
-     * session/minute-based weekly progress.
+     * Completed focus sessions
+     * for the current week.
      */
     supabase
-      .from("focus_sessions")
+      .from(
+        "focus_sessions"
+      )
       .select(`
         goal_id,
         actual_duration_seconds,
         status,
         completed_at
       `)
-      .eq("user_id", user.id)
-      .eq("status", "completed")
+      .eq(
+        "user_id",
+        user.id
+      )
+      .eq(
+        "status",
+        "completed"
+      )
       .gte(
         "completed_at",
         weekRange.start
@@ -166,17 +229,22 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Explicit output completions power count-based
-     * goals.
+     * Explicit count completions
+     * for the current week.
      */
     supabase
-      .from("goal_completions")
+      .from(
+        "goal_completions"
+      )
       .select(`
         goal_id,
         quantity,
         completed_at
       `)
-      .eq("user_id", user.id)
+      .eq(
+        "user_id",
+        user.id
+      )
       .gte(
         "completed_at",
         weekRange.start
@@ -185,45 +253,166 @@ export default async function TodayPage() {
         "completed_at",
         weekRange.end
       ),
+
+    /*
+     * Today's completed focus
+     * sessions.
+     */
+    supabase
+      .from(
+        "focus_sessions"
+      )
+      .select(`
+        goal_id,
+        actual_duration_seconds,
+        status,
+        completed_at
+      `)
+      .eq(
+        "user_id",
+        user.id
+      )
+      .eq(
+        "status",
+        "completed"
+      )
+      .gte(
+        "completed_at",
+        dayRange.start
+      )
+      .lt(
+        "completed_at",
+        dayRange.end
+      ),
+
+    /*
+     * Today's explicit count
+     * completions.
+     */
+    supabase
+      .from(
+        "goal_completions"
+      )
+      .select(`
+        goal_id,
+        quantity,
+        completed_at
+      `)
+      .eq(
+        "user_id",
+        user.id
+      )
+      .gte(
+        "completed_at",
+        dayRange.start
+      )
+      .lt(
+        "completed_at",
+        dayRange.end
+      ),
   ]);
 
+  /*
+   * Report query failures without
+   * crashing the whole dashboard.
+   */
+
+  if (goalsResult.error) {
+    console.error(
+      "Unable to load goals:",
+      goalsResult.error
+    );
+  }
+
+  if (
+    preferenceResult.error
+  ) {
+    console.error(
+      "Unable to load focus preferences:",
+      preferenceResult.error
+    );
+  }
+
+  if (
+    weeklyFocusResult.error
+  ) {
+    console.error(
+      "Unable to load weekly focus sessions:",
+      weeklyFocusResult.error
+    );
+  }
+
+  if (
+    weeklyCompletionResult.error
+  ) {
+    console.error(
+      "Unable to load weekly goal completions:",
+      weeklyCompletionResult.error
+    );
+  }
+
+  if (
+    todayFocusResult.error
+  ) {
+    console.error(
+      "Unable to load today's focus sessions:",
+      todayFocusResult.error
+    );
+  }
+
+  if (
+    todayCompletionResult.error
+  ) {
+    console.error(
+      "Unable to load today's goal completions:",
+      todayCompletionResult.error
+    );
+  }
+
+  /*
+   * NORMALIZED DATA
+   */
+
   const goals =
-    (goalsData ?? []) as Goal[];
+    (goalsResult.data ??
+      []) as Goal[];
 
   const focusPreference =
-    focusPreferenceData as
+    preferenceResult.data as
       | FocusPreference
       | null;
 
-  const focusSessions =
-    (focusSessionsData ??
+  const weeklyFocusSessions =
+    (weeklyFocusResult.data ??
       []) as FocusSession[];
 
-  const goalCompletions =
-    (goalCompletionsData ??
+  const weeklyGoalCompletions =
+    (weeklyCompletionResult.data ??
+      []) as GoalCompletion[];
+
+  const todayFocusSessions =
+    (todayFocusResult.data ??
+      []) as FocusSession[];
+
+  const todayGoalCompletions =
+    (todayCompletionResult.data ??
       []) as GoalCompletion[];
 
   /*
-   * Header date.
+   * HEADER
    */
-  const formattedDate =
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    }).format(now);
 
-  /*
-   * Greeting based on user's local time.
-   */
-  const localHour = Number(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "2-digit",
-      hourCycle: "h23",
-    }).format(now)
-  );
+  const formattedDate =
+    formatLocalDate(
+      now,
+      timezone
+    );
+
+  const localHour =
+    getLocalHour(
+      now,
+      timezone
+    );
 
   const greeting =
     localHour < 12
@@ -240,22 +429,25 @@ export default async function TodayPage() {
     displayName.split(/\s+/)[0];
 
   /*
-   * Today's scheduled goals.
+   * TODAY'S SCHEDULE
    */
-  const todaysGoals = goals.filter(
-    (goal) =>
+
+  const todaysGoals =
+    goals.filter((goal) =>
       goal.goal_schedules?.some(
         (schedule) =>
           schedule.day_of_week ===
           dayOfWeek
       )
-  );
+    );
 
   /*
-   * Focus preferences.
+   * FOCUS PREFERENCE
    */
+
   const focusMinutes =
-    focusPreference?.preset === "deep"
+    focusPreference?.preset ===
+    "deep"
       ? 45
       : focusPreference?.preset ===
           "custom"
@@ -263,7 +455,8 @@ export default async function TodayPage() {
         : 25;
 
   const breakMinutes =
-    focusPreference?.preset === "deep"
+    focusPreference?.preset ===
+    "deep"
       ? 10
       : focusPreference?.preset ===
           "custom"
@@ -271,7 +464,8 @@ export default async function TodayPage() {
         : 5;
 
   const focusLabel =
-    focusPreference?.preset === "deep"
+    focusPreference?.preset ===
+    "deep"
       ? "Deep Focus"
       : focusPreference?.preset ===
           "custom"
@@ -279,54 +473,43 @@ export default async function TodayPage() {
         : "Pomodoro";
 
   /*
-   * Calculate progress for each goal.
+   * WEEKLY PROGRESS
    */
-  const progressByGoal = new Map<
-    string,
-    GoalProgress
-  >();
+
+  const weeklyProgressByGoal =
+    new Map<
+      string,
+      GoalProgress
+    >();
 
   for (const goal of goals) {
-    /*
-     * Completed focus sessions associated with this
-     * specific goal.
-     */
     const sessionsForGoal =
-      focusSessions.filter(
+      weeklyFocusSessions.filter(
         (session) =>
-          session.goal_id === goal.id
+          session.goal_id ===
+          goal.id
       );
 
     let value = 0;
 
-    /*
-     * SESSION GOALS
-     *
-     * Example:
-     * Career
-     * 3 sessions/week
-     */
     if (
       goal.measurement_type ===
       "sessions"
     ) {
-      value = sessionsForGoal.length;
+      value =
+        sessionsForGoal.length;
     }
 
-    /*
-     * MINUTE GOALS
-     *
-     * Example:
-     * Personal Projects
-     * 240 minutes/week
-     */
     if (
       goal.measurement_type ===
       "minutes"
     ) {
       const totalSeconds =
         sessionsForGoal.reduce(
-          (total, session) =>
+          (
+            total,
+            session
+          ) =>
             total +
             session.actual_duration_seconds,
           0
@@ -337,32 +520,26 @@ export default async function TodayPage() {
       );
     }
 
-    /*
-     * COUNT GOALS
-     *
-     * Example:
-     * Side Income
-     * 5 outputs/week
-     *
-     * These use explicit goal_completions rather
-     * than focus sessions.
-     */
     if (
       goal.measurement_type ===
       "count"
     ) {
-      value = goalCompletions
-        .filter(
-          (completion) =>
-            completion.goal_id ===
-            goal.id
-        )
-        .reduce(
-          (total, completion) =>
-            total +
-            completion.quantity,
-          0
-        );
+      value =
+        weeklyGoalCompletions
+          .filter(
+            (completion) =>
+              completion.goal_id ===
+              goal.id
+          )
+          .reduce(
+            (
+              total,
+              completion
+            ) =>
+              total +
+              completion.quantity,
+            0
+          );
     }
 
     const percentage =
@@ -375,17 +552,178 @@ export default async function TodayPage() {
           )
         : 0;
 
-    progressByGoal.set(goal.id, {
-      value,
-      percentage,
-    });
+    weeklyProgressByGoal.set(
+      goal.id,
+      {
+        value,
+        percentage,
+      }
+    );
   }
+
+  /*
+   * TODAY PROGRESS
+   *
+   * This is derived from actual
+   * activity. We do not store a
+   * separate "today completed"
+   * boolean.
+   */
+
+  const todayProgressByGoal =
+    new Map<
+      string,
+      TodayProgress
+    >();
+
+  for (
+    const goal of todaysGoals
+  ) {
+    const schedule =
+      goal.goal_schedules.find(
+        (item) =>
+          item.day_of_week ===
+          dayOfWeek
+      );
+
+    const scheduledMinutes =
+      schedule?.duration_minutes ??
+      goal.default_duration_minutes ??
+      0;
+
+    const focusSessions =
+      todayFocusSessions.filter(
+        (session) =>
+          session.goal_id ===
+          goal.id
+      );
+
+    /*
+     * Session goal:
+     * at least one completed focus
+     * session today counts as
+     * showing up.
+     */
+    if (
+      goal.measurement_type ===
+      "sessions"
+    ) {
+      const value =
+        focusSessions.length;
+
+      todayProgressByGoal.set(
+        goal.id,
+        {
+          value,
+          target: 1,
+          completed:
+            value >= 1,
+        }
+      );
+
+      continue;
+    }
+
+    /*
+     * Minutes goal:
+     * compare today's completed
+     * focus minutes against the
+     * scheduled duration.
+     */
+    if (
+      goal.measurement_type ===
+      "minutes"
+    ) {
+      const totalSeconds =
+        focusSessions.reduce(
+          (
+            total,
+            session
+          ) =>
+            total +
+            session.actual_duration_seconds,
+          0
+        );
+
+      const value =
+        Math.floor(
+          totalSeconds / 60
+        );
+
+      const target =
+        scheduledMinutes > 0
+          ? scheduledMinutes
+          : goal.default_duration_minutes ??
+            1;
+
+      todayProgressByGoal.set(
+        goal.id,
+        {
+          value,
+          target,
+          completed:
+            value >= target,
+        }
+      );
+
+      continue;
+    }
+
+    /*
+     * Count goal:
+     * at least one explicitly
+     * completed output today.
+     */
+    const value =
+      todayGoalCompletions
+        .filter(
+          (completion) =>
+            completion.goal_id ===
+            goal.id
+        )
+        .reduce(
+          (
+            total,
+            completion
+          ) =>
+            total +
+            completion.quantity,
+          0
+        );
+
+    todayProgressByGoal.set(
+      goal.id,
+      {
+        value,
+        target: 1,
+        completed:
+          value >= 1,
+      }
+    );
+  }
+
+  const completedTodayCount =
+    todaysGoals.filter(
+      (goal) =>
+        todayProgressByGoal.get(
+          goal.id
+        )?.completed === true
+    ).length;
+
+  const allTodayCompleted =
+    todaysGoals.length > 0 &&
+    completedTodayCount ===
+      todaysGoals.length;
+
+  /*
+   * UI
+   */
 
   return (
     <main className="min-h-screen bg-[#f7f9f6] text-gray-900">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
 
-        {/* Header */}
+        {/* HEADER */}
 
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -402,28 +740,36 @@ export default async function TodayPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {greeting}, {firstName} 👋
+              {greeting},{" "}
+              {firstName} 👋
             </h1>
 
             <p className="mt-2 text-gray-500">
-              Focus on what matters today.
+              Focus on what matters
+              today.
             </p>
           </div>
 
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#dce7de] bg-white px-4 py-2 text-sm text-[#52735a]">
-            <span>🔥</span>
+            <span>
+              {allTodayCompleted
+                ? "✓"
+                : "🔥"}
+            </span>
 
             <span>
-              Build your momentum
+              {allTodayCompleted
+                ? "Today's plan complete"
+                : `${completedTodayCount} / ${todaysGoals.length} done today`}
             </span>
           </div>
         </header>
 
-        {/* Main dashboard */}
+        {/* MAIN GRID */}
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
 
-          {/* Today's Plan */}
+          {/* TODAY'S PLAN */}
 
           <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
             <div className="flex items-start justify-between gap-4">
@@ -437,61 +783,167 @@ export default async function TodayPage() {
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-500">
-                  Your routine for today.
+                  Your routine for
+                  today.
                 </p>
               </div>
 
               <div className="rounded-full bg-[#eef4ef] px-3 py-1.5 text-xs font-medium text-[#45634c]">
-                {todaysGoals.length}{" "}
-                {todaysGoals.length === 1
-                  ? "goal"
-                  : "goals"}
+                {completedTodayCount}
+                {" / "}
+                {todaysGoals.length}
               </div>
             </div>
 
-            {todaysGoals.length > 0 ? (
+            {allTodayCompleted && (
+              <div className="mt-6 rounded-2xl border border-[#dce7de] bg-[#f2f7f3] p-4">
+                <div className="flex gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#45634c] text-sm font-bold text-white">
+                    ✓
+                  </div>
+
+                  <div>
+                    <p className="font-medium text-[#36523d]">
+                      Today&apos;s
+                      plan is complete.
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-[#6c8772]">
+                      Nice. Everything
+                      you planned for
+                      today has been
+                      covered.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {todaysGoals.length >
+            0 ? (
               <div className="mt-6 space-y-3">
                 {todaysGoals.map(
                   (goal) => {
-                    const todaySchedule =
+                    const schedule =
                       goal.goal_schedules.find(
-                        (schedule) =>
-                          schedule.day_of_week ===
+                        (item) =>
+                          item.day_of_week ===
                           dayOfWeek
                       );
 
                     const duration =
-                      todaySchedule?.duration_minutes ??
+                      schedule?.duration_minutes ??
                       goal.default_duration_minutes;
+
+                    const todayProgress =
+                      todayProgressByGoal.get(
+                        goal.id
+                      ) ?? {
+                        value: 0,
+                        target: 1,
+                        completed:
+                          false,
+                      };
 
                     return (
                       <div
                         key={goal.id}
-                        className="group flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-[#fbfcfb] p-4 transition hover:border-[#dce7de] hover:bg-[#f7faf7]"
+                        className={`rounded-2xl border p-4 transition ${
+                          todayProgress.completed
+                            ? "border-[#dce7de] bg-[#f5f9f5]"
+                            : "border-gray-100 bg-[#fbfcfb]"
+                        }`}
                       >
-                        <div className="flex min-w-0 items-center gap-4">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef4ef] text-xl">
-                            {goal.icon ||
-                              "🎯"}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex min-w-0 gap-4">
+                            <div
+                              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${
+                                todayProgress.completed
+                                  ? "bg-[#dfeae1]"
+                                  : "bg-[#eef4ef]"
+                              }`}
+                            >
+                              {todayProgress.completed
+                                ? "✓"
+                                : goal.icon ||
+                                  "🎯"}
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p
+                                  className={`truncate font-medium ${
+                                    todayProgress.completed
+                                      ? "text-[#45634c]"
+                                      : ""
+                                  }`}
+                                >
+                                  {
+                                    goal.name
+                                  }
+                                </p>
+
+                                {todayProgress.completed && (
+                                  <span className="rounded-full bg-[#e3eee5] px-2 py-0.5 text-[11px] font-medium text-[#45634c]">
+                                    Done
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="mt-1 text-sm text-gray-400">
+                                {formatGoalTarget(
+                                  goal
+                                )}
+                              </p>
+
+                              <div className="mt-2">
+                                <TodayStatus
+                                  goal={
+                                    goal
+                                  }
+                                  progress={
+                                    todayProgress
+                                  }
+                                />
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">
-                              {goal.name}
-                            </p>
-
-                            <p className="mt-1 text-sm text-gray-400">
-                              {formatGoalTarget(
-                                goal
-                              )}
-                            </p>
-                          </div>
+                          {duration && (
+                            <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm ring-1 ring-gray-100">
+                              {
+                                duration
+                              }{" "}
+                              min
+                            </span>
+                          )}
                         </div>
 
-                        {duration && (
-                          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm ring-1 ring-gray-100">
-                            {duration} min
-                          </span>
+                        {!todayProgress.completed && (
+                          <div className="mt-4 border-t border-gray-100 pt-4">
+                            {goal.measurement_type ===
+                            "count" ? (
+                              <GoalCompletionButton
+                                userId={
+                                  user.id
+                                }
+                                goalId={
+                                  goal.id
+                                }
+                                goalName={
+                                  goal.name
+                                }
+                              />
+                            ) : (
+                              <Link
+                                href="/focus"
+                                className="block w-full rounded-xl border border-[#dce7de] bg-white px-4 py-2.5 text-center text-sm font-medium text-[#45634c] transition hover:bg-[#eef4ef]"
+                              >
+                                Start
+                                Focus
+                              </Link>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -505,19 +957,22 @@ export default async function TodayPage() {
                 </div>
 
                 <p className="mt-3 font-medium">
-                  Nothing scheduled today.
+                  Nothing scheduled
+                  today.
                 </p>
 
                 <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-gray-400">
-                  Use today to recharge or
-                  make progress on something
-                  that feels important.
+                  Use today to
+                  recharge or make
+                  progress on
+                  something that
+                  feels important.
                 </p>
               </div>
             )}
           </section>
 
-          {/* Focus */}
+          {/* FOCUS CARD */}
 
           <section className="relative overflow-hidden rounded-3xl bg-[#45634c] p-6 text-white shadow-sm sm:p-8">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/5" />
@@ -539,7 +994,10 @@ export default async function TodayPage() {
                 <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full border border-white/20 bg-white/5 sm:h-48 sm:w-48">
                   <div>
                     <p className="text-5xl font-semibold tracking-tight">
-                      {focusMinutes}:00
+                      {
+                        focusMinutes
+                      }
+                      :00
                     </p>
 
                     <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/50">
@@ -557,14 +1015,16 @@ export default async function TodayPage() {
               </Link>
 
               <p className="mt-4 text-center text-xs text-white/50">
-                {focusMinutes} min focus ·{" "}
-                {breakMinutes} min break
+                {focusMinutes} min
+                focus ·{" "}
+                {breakMinutes} min
+                break
               </p>
             </div>
           </section>
         </div>
 
-        {/* Weekly Goals */}
+        {/* WEEKLY GOALS */}
 
         <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="flex items-end justify-between gap-4">
@@ -585,92 +1045,102 @@ export default async function TodayPage() {
 
           {goals.length > 0 ? (
             <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {goals.map((goal) => {
-                const progress =
-                  progressByGoal.get(
-                    goal.id
-                  ) ?? {
-                    value: 0,
-                    percentage: 0,
-                  };
+              {goals.map(
+                (goal) => {
+                  const progress =
+                    weeklyProgressByGoal.get(
+                      goal.id
+                    ) ?? {
+                      value: 0,
+                      percentage:
+                        0,
+                    };
 
-                const targetReached =
-                  progress.value >=
-                  goal.weekly_target;
+                  const targetReached =
+                    progress.value >=
+                    goal.weekly_target;
 
-                return (
-                  <div
-                    key={goal.id}
-                    className="rounded-2xl border border-gray-100 bg-[#fbfcfb] p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef4ef] text-lg">
-                          {goal.icon ||
-                            "🎯"}
+                  return (
+                    <div
+                      key={goal.id}
+                      className="rounded-2xl border border-gray-100 bg-[#fbfcfb] p-5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef4ef] text-lg">
+                            {goal.icon ||
+                              "🎯"}
+                          </div>
+
+                          <div>
+                            <p className="font-medium">
+                              {
+                                goal.name
+                              }
+                            </p>
+
+                            <p className="mt-0.5 text-xs text-gray-400">
+                              {formatGoalTarget(
+                                goal
+                              )}
+                            </p>
+                          </div>
                         </div>
 
-                        <div>
-                          <p className="font-medium">
-                            {goal.name}
-                          </p>
+                        {targetReached && (
+                          <span className="rounded-full bg-[#e7eee8] px-2.5 py-1 text-xs font-medium text-[#45634c]">
+                            ✓ Goal
+                          </span>
+                        )}
+                      </div>
 
-                          <p className="mt-0.5 text-xs text-gray-400">
-                            {formatGoalTarget(
-                              goal
-                            )}
-                          </p>
+                      <div className="mt-5">
+                        <div className="mb-2 flex items-center justify-between text-xs">
+                          <span className="text-gray-400">
+                            Progress
+                          </span>
+
+                          <span className="font-medium text-gray-600">
+                            {
+                              progress.value
+                            }{" "}
+                            /{" "}
+                            {
+                              goal.weekly_target
+                            }
+                          </span>
                         </div>
-                      </div>
 
-                      {targetReached && (
-                        <span className="rounded-full bg-[#e7eee8] px-2.5 py-1 text-xs font-medium text-[#45634c]">
-                          ✓ Goal
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-5">
-                      <div className="mb-2 flex items-center justify-between text-xs">
-                        <span className="text-gray-400">
-                          Progress
-                        </span>
-
-                        <span className="font-medium text-gray-600">
-                          {progress.value} /{" "}
-                          {goal.weekly_target}
-                        </span>
-                      </div>
-
-                      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-full rounded-full bg-[#6c8772] transition-all duration-500"
-                          style={{
-                            width: `${progress.percentage}%`,
-                          }}
-                        />
-                      </div>
-
-                      {goal.measurement_type ===
-                        "count" && (
-                        <div className="mt-4">
-                          <GoalCompletionButton
-                            userId={
-                              user.id
-                            }
-                            goalId={
-                              goal.id
-                            }
-                            goalName={
-                              goal.name
-                            }
+                        <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            className="h-full rounded-full bg-[#6c8772] transition-all duration-500"
+                            style={{
+                              width: `${progress.percentage}%`,
+                            }}
                           />
                         </div>
-                      )}
+
+                        {goal.measurement_type ===
+                          "count" && (
+                          <div className="mt-4">
+                            <GoalCompletionButton
+                              userId={
+                                user.id
+                              }
+                              goalId={
+                                goal.id
+                              }
+                              goalName={
+                                goal.name
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
             </div>
           ) : (
             <div className="mt-6 rounded-2xl bg-[#fbfcfb] p-6 text-center text-sm text-gray-500">
@@ -679,12 +1149,13 @@ export default async function TodayPage() {
           )}
         </section>
 
-        {/* Footer */}
+        {/* FOOTER */}
 
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-400">
-            🌱 Momentum rewards showing up —
-            not being busy.
+            🌱 Momentum rewards
+            showing up — not being
+            busy.
           </p>
         </div>
       </div>
@@ -693,245 +1164,115 @@ export default async function TodayPage() {
 }
 
 /*
- * Determine the current Monday -> next Monday range
- * according to the user's local calendar.
+ * TODAY STATUS COMPONENT
  */
-function getWeekRange(
-  now: Date,
-  timeZone: string
-): {
-  start: string;
-  end: string;
-} {
-  const localParts =
-    getLocalDateParts(
-      now,
-      timeZone
-    );
 
-  /*
-   * Represent the local calendar date temporarily as UTC.
-   * This is only used for calendar arithmetic.
-   */
-  const localDateAsUtc = new Date(
-    Date.UTC(
-      localParts.year,
-      localParts.month - 1,
-      localParts.day
-    )
-  );
-
-  const jsDay =
-    localDateAsUtc.getUTCDay();
-
-  /*
-   * JavaScript:
-   * Sunday = 0
-   * Monday = 1
-   * ...
-   */
-  const mondayOffset =
-    jsDay === 0
-      ? -6
-      : 1 - jsDay;
-
-  const monday =
-    new Date(localDateAsUtc);
-
-  monday.setUTCDate(
-    localDateAsUtc.getUTCDate() +
-      mondayOffset
-  );
-
-  const nextMonday =
-    new Date(monday);
-
-  nextMonday.setUTCDate(
-    monday.getUTCDate() + 7
-  );
-
-  return {
-    start:
-      localMidnightToUtcIso(
-        monday,
-        timeZone
-      ),
-
-    end:
-      localMidnightToUtcIso(
-        nextMonday,
-        timeZone
-      ),
-  };
-}
-
-/*
- * Get the calendar date currently visible to the user
- * in their configured timezone.
- */
-function getLocalDateParts(
-  date: Date,
-  timeZone: string
-) {
-  const formatter =
-    new Intl.DateTimeFormat(
-      "en-US",
-      {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }
-    );
-
-  const parts =
-    formatter.formatToParts(date);
-
-  const values: Record<
-    string,
-    string
-  > = {};
-
-  for (const part of parts) {
+function TodayStatus({
+  goal,
+  progress,
+}: {
+  goal: Goal;
+  progress: TodayProgress;
+}) {
+  if (progress.completed) {
     if (
-      part.type !== "literal"
+      goal.measurement_type ===
+      "minutes"
     ) {
-      values[part.type] =
-        part.value;
+      return (
+        <p className="text-xs font-medium text-[#52735a]">
+          {progress.value} /{" "}
+          {progress.target} min
+          today · Complete
+        </p>
+      );
     }
+
+    if (
+      goal.measurement_type ===
+      "count"
+    ) {
+      return (
+        <p className="text-xs font-medium text-[#52735a]">
+          {progress.value}{" "}
+          {progress.value === 1
+            ? "item"
+            : "items"}{" "}
+          completed today
+        </p>
+      );
+    }
+
+    return (
+      <p className="text-xs font-medium text-[#52735a]">
+        Completed today
+      </p>
+    );
   }
 
-  return {
-    year: Number(values.year),
-    month: Number(values.month),
-    day: Number(values.day),
-  };
-}
-
-/*
- * Convert midnight on a calendar date in an arbitrary
- * IANA timezone into its UTC timestamptz equivalent.
- */
-function localMidnightToUtcIso(
-  calendarDate: Date,
-  timeZone: string
-): string {
-  const year =
-    calendarDate.getUTCFullYear();
-
-  const month =
-    calendarDate.getUTCMonth();
-
-  const day =
-    calendarDate.getUTCDate();
-
-  let guess = Date.UTC(
-    year,
-    month,
-    day,
-    0,
-    0,
-    0
-  );
-
-  /*
-   * Two passes allow the timezone offset to settle,
-   * including DST changes.
-   */
-  for (
-    let iteration = 0;
-    iteration < 2;
-    iteration += 1
+  if (
+    goal.measurement_type ===
+    "minutes"
   ) {
-    const parts =
-      getZonedDateTimeParts(
-        new Date(guess),
-        timeZone
-      );
+    const percentage =
+      progress.target > 0
+        ? Math.min(
+            (progress.value /
+              progress.target) *
+              100,
+            100
+          )
+        : 0;
 
-    const representedAsUtc =
-      Date.UTC(
-        parts.year,
-        parts.month - 1,
-        parts.day,
-        parts.hour,
-        parts.minute,
-        parts.second
-      );
+    return (
+      <div className="max-w-[220px]">
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span>
+            Today
+          </span>
 
-    const desiredAsUtc =
-      Date.UTC(
-        year,
-        month,
-        day,
-        0,
-        0,
-        0
-      );
+          <span>
+            {progress.value} /{" "}
+            {progress.target} min
+          </span>
+        </div>
 
-    guess +=
-      desiredAsUtc -
-      representedAsUtc;
-  }
-
-  return new Date(
-    guess
-  ).toISOString();
-}
-
-/*
- * Get full date/time components as seen in a particular
- * timezone.
- */
-function getZonedDateTimeParts(
-  date: Date,
-  timeZone: string
-) {
-  const formatter =
-    new Intl.DateTimeFormat(
-      "en-US",
-      {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h23",
-      }
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className="h-full rounded-full bg-[#7b957f]"
+            style={{
+              width: `${percentage}%`,
+            }}
+          />
+        </div>
+      </div>
     );
-
-  const parts =
-    formatter.formatToParts(date);
-
-  const values: Record<
-    string,
-    string
-  > = {};
-
-  for (const part of parts) {
-    if (
-      part.type !== "literal"
-    ) {
-      values[part.type] =
-        part.value;
-    }
   }
 
-  return {
-    year: Number(values.year),
-    month: Number(values.month),
-    day: Number(values.day),
-    hour: Number(values.hour),
-    minute: Number(values.minute),
-    second: Number(values.second),
-  };
+  if (
+    goal.measurement_type ===
+    "count"
+  ) {
+    return (
+      <p className="text-xs text-gray-400">
+        No output completed yet
+        today.
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-xs text-gray-400">
+      No focus session completed
+      yet today.
+    </p>
+  );
 }
 
 /*
- * Human-readable weekly target.
+ * WEEKLY TARGET LABEL
  */
+
 function formatGoalTarget(
   goal: Goal
 ) {
