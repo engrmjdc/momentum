@@ -162,6 +162,7 @@ export default async function GoalsPage() {
                           </ul>
                         ) : <p className="mt-2 text-sm text-gray-500">No days scheduled.</p>}
                       </div>
+                      <Link href={`/goals/${goal.id}/edit`} className="mt-5 inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee]">Edit Goal<span className="sr-only">: {goal.name}</span></Link>
                     </article>
                   );
                 })}
