@@ -1,4 +1,5 @@
 import Link from "next/link";
+import GoalStatusButton from "./goal-status-button";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalWeekRange } from "@/lib/date-utils";
@@ -10,6 +11,7 @@ type Goal = {
   icon: string | null;
   measurement_type: "sessions" | "minutes" | "count";
   weekly_target: number;
+  is_active: boolean;
   default_duration_minutes: number | null;
   goal_schedules: {
     day_of_week: number;
@@ -37,12 +39,11 @@ export default async function GoalsPage() {
     supabase
       .from("goals")
       .select(`
-        id, name, description, icon, measurement_type,
+        id, name, description, icon, measurement_type, is_active,
         weekly_target, default_duration_minutes,
         goal_schedules (day_of_week, duration_minutes)
       `)
       .eq("user_id", user.id)
-      .eq("is_active", true)
       .order("created_at", { ascending: true }),
     supabase
       .from("focus_sessions")
@@ -84,7 +85,13 @@ export default async function GoalsPage() {
       reached: value >= goal.weekly_target,
     };
   });
-  const reachedCount = progress.filter((item) => item.reached).length;
+  const activeProgress = progress.filter((item) => item.goal.is_active);
+  const pausedProgress = progress.filter((item) => !item.goal.is_active);
+  const reachedCount = activeProgress.filter((item) => item.reached).length;
+  const groups = [
+    { name: "Active Goals", items: activeProgress, empty: "No active goals yet", hint: "Create a goal or resume one below to build your weekly routine." },
+    { name: "Paused Goals", items: pausedProgress, empty: "No paused goals", hint: "Paused goals keep their schedules and history. Resume them whenever you are ready." },
+  ];
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone, month: "short", day: "numeric",
   });
@@ -115,28 +122,32 @@ export default async function GoalsPage() {
             <section aria-label="Weekly overview" className="mt-8 flex flex-col gap-4 rounded-3xl border border-[#dce7de] bg-[#edf3ee] p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#45634c]">This week · {weekLabel}</p>
-                <p className="mt-2 text-lg font-semibold text-[#45634c]">{reachedCount} of {goals.length} weekly targets reached</p>
+                <p className="mt-2 text-lg font-semibold text-[#45634c]">{reachedCount} of {activeProgress.length} weekly targets reached</p>
                 <p className="mt-1 text-sm text-gray-600">Your week runs Monday through Sunday in {timezone}.</p>
               </div>
-              <span className="self-start rounded-full bg-white px-4 py-2 text-sm font-medium text-[#45634c]">{goals.length} active {goals.length === 1 ? "goal" : "goals"}</span>
+              <span className="self-start rounded-full bg-white px-4 py-2 text-sm font-medium text-[#45634c]">{activeProgress.length} active {activeProgress.length === 1 ? "goal" : "goals"}</span>
             </section>
 
-            {goals.length === 0 ? (
+            {groups.map((group) => (
+              <section key={group.name} aria-label={group.name} className="mt-8">
+                <h2 className="text-xl font-semibold">{group.name}</h2>
+                <p className="mt-2 text-sm text-gray-500">{group.name === "Active Goals" ? "Goals in your current routine. Pausing removes a goal from Today’s Plan." : "Schedules and history are preserved while these goals are paused."}</p>
+            {group.items.length === 0 ? (
               <section className="mt-6 rounded-3xl border border-dashed border-gray-300 bg-white p-10 text-center">
                 <span aria-hidden="true" className="text-3xl">🌱</span>
-                <h2 className="mt-4 text-lg font-semibold">No active goals yet</h2>
-                <p className="mt-2 text-sm text-gray-500">Your active goals and weekly progress will appear here.</p>
+                <h3 className="mt-4 text-lg font-semibold">{group.empty}</h3>
+                <p className="mt-2 text-sm text-gray-500">{group.hint}</p>
               </section>
             ) : (
-              <section aria-label="Active goals" className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {progress.map(({ goal, value, percentage, reached }) => {
+              <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {group.items.map(({ goal, value, percentage, reached }) => {
                   const unit = goal.measurement_type === "count" ? "items" : goal.measurement_type;
                   return (
                     <article key={goal.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                       <div className="flex items-start gap-3">
                         <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3ee] text-xl">{goal.icon || "🎯"}</span>
                         <div className="min-w-0">
-                          <h2 className="break-words text-lg font-semibold">{goal.name}</h2>
+                          <h3 className="break-words text-lg font-semibold">{goal.name}</h3>
                           <p className="mt-1 text-sm text-gray-500">{goal.weekly_target} {unit} / week</p>
                         </div>
                       </div>
@@ -162,12 +173,17 @@ export default async function GoalsPage() {
                           </ul>
                         ) : <p className="mt-2 text-sm text-gray-500">No days scheduled.</p>}
                       </div>
-                      <Link href={`/goals/${goal.id}/edit`} className="mt-5 inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee]">Edit Goal<span className="sr-only">: {goal.name}</span></Link>
+                      <div className="mt-5 flex flex-wrap items-start gap-2">
+                      <Link href={`/goals/${goal.id}/edit`} className="inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee]">Edit Goal<span className="sr-only">: {goal.name}</span></Link>
+                        <GoalStatusButton key={`${goal.id}-${goal.is_active}`} goalId={goal.id} goalName={goal.name} isActive={goal.is_active} />
+                      </div>
                     </article>
                   );
                 })}
-              </section>
+              </div>
             )}
+              </section>
+            ))}
           </>
         )}
       </div>
