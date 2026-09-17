@@ -881,16 +881,6 @@ export default async function TodayPage() {
 
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-6 flex items-center gap-2 text-lg font-bold text-[#45634c]">
-              <span>
-                🌱
-              </span>
-
-              <span>
-                Momentum
-              </span>
-            </div>
-
             <p className="text-sm font-medium text-[#6c8772]">
               {formattedDate}
             </p>
