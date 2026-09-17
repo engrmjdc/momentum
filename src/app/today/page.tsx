@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import GoalCompletionButton from "./goal-completion-button";
 
 type GoalSchedule = {
   day_of_week: number;
@@ -11,7 +12,10 @@ type Goal = {
   id: string;
   name: string;
   icon: string | null;
-  measurement_type: "sessions" | "minutes" | "count";
+  measurement_type:
+    | "sessions"
+    | "minutes"
+    | "count";
   weekly_target: number;
   default_duration_minutes: number | null;
   goal_schedules: GoalSchedule[];
@@ -26,8 +30,17 @@ type FocusPreference = {
 type FocusSession = {
   goal_id: string | null;
   actual_duration_seconds: number;
-  status: "in_progress" | "completed" | "cancelled";
+  status:
+    | "in_progress"
+    | "completed"
+    | "cancelled";
   completed_at: string | null;
+};
+
+type GoalCompletion = {
+  goal_id: string;
+  quantity: number;
+  completed_at: string;
 };
 
 type GoalProgress = {
@@ -57,8 +70,8 @@ export default async function TodayPage() {
   }
 
   /*
-   * Load the profile first because we need the user's
-   * timezone before calculating the current week.
+   * Load the user's profile first because the timezone
+   * determines today's schedule and the weekly range.
    */
   const { data: profile } = await supabase
     .from("profiles")
@@ -66,26 +79,38 @@ export default async function TodayPage() {
     .eq("id", user.id)
     .single();
 
-  const timezone = profile?.timezone || "Asia/Manila";
+  const timezone =
+    profile?.timezone || "Asia/Manila";
+
   const now = new Date();
 
-  const weekday = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    weekday: "short",
-  }).format(now);
+  /*
+   * Determine the user's local weekday.
+   */
+  const weekday =
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+    }).format(now);
 
   const dayOfWeek = WEEKDAY_MAP[weekday];
 
   /*
-   * Calculate Monday -> next Monday using the user's
-   * local calendar rather than the server's UTC weekday.
+   * Monday -> next Monday.
    */
-  const weekRange = getWeekRange(now, timezone);
+  const weekRange = getWeekRange(
+    now,
+    timezone
+  );
 
+  /*
+   * Load all dashboard data concurrently.
+   */
   const [
     { data: goalsData },
     { data: focusPreferenceData },
     { data: focusSessionsData },
+    { data: goalCompletionsData },
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -103,7 +128,9 @@ export default async function TodayPage() {
       `)
       .eq("user_id", user.id)
       .eq("is_active", true)
-      .order("created_at", { ascending: true }),
+      .order("created_at", {
+        ascending: true,
+      }),
 
     supabase
       .from("focus_preferences")
@@ -115,6 +142,10 @@ export default async function TodayPage() {
       .eq("user_id", user.id)
       .maybeSingle(),
 
+    /*
+     * Only completed focus sessions contribute toward
+     * session/minute-based weekly progress.
+     */
     supabase
       .from("focus_sessions")
       .select(`
@@ -125,28 +156,67 @@ export default async function TodayPage() {
       `)
       .eq("user_id", user.id)
       .eq("status", "completed")
-      .gte("completed_at", weekRange.start)
-      .lt("completed_at", weekRange.end),
+      .gte(
+        "completed_at",
+        weekRange.start
+      )
+      .lt(
+        "completed_at",
+        weekRange.end
+      ),
+
+    /*
+     * Explicit output completions power count-based
+     * goals.
+     */
+    supabase
+      .from("goal_completions")
+      .select(`
+        goal_id,
+        quantity,
+        completed_at
+      `)
+      .eq("user_id", user.id)
+      .gte(
+        "completed_at",
+        weekRange.start
+      )
+      .lt(
+        "completed_at",
+        weekRange.end
+      ),
   ]);
 
-  const goals = (goalsData ?? []) as Goal[];
+  const goals =
+    (goalsData ?? []) as Goal[];
 
   const focusPreference =
-    focusPreferenceData as FocusPreference | null;
+    focusPreferenceData as
+      | FocusPreference
+      | null;
 
   const focusSessions =
-    (focusSessionsData ?? []) as FocusSession[];
+    (focusSessionsData ??
+      []) as FocusSession[];
 
-  const formattedDate = new Intl.DateTimeFormat(
-    "en-US",
-    {
+  const goalCompletions =
+    (goalCompletionsData ??
+      []) as GoalCompletion[];
+
+  /*
+   * Header date.
+   */
+  const formattedDate =
+    new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       weekday: "long",
       month: "long",
       day: "numeric",
-    }
-  ).format(now);
+    }).format(now);
 
+  /*
+   * Greeting based on user's local time.
+   */
   const localHour = Number(
     new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
@@ -163,46 +233,53 @@ export default async function TodayPage() {
         : "Good evening";
 
   const displayName =
-    profile?.display_name?.trim() || "there";
+    profile?.display_name?.trim() ||
+    "there";
 
-  const firstName = displayName.split(/\s+/)[0];
+  const firstName =
+    displayName.split(/\s+/)[0];
 
   /*
-   * Find goals scheduled for the user's local day.
+   * Today's scheduled goals.
    */
-  const todaysGoals = goals.filter((goal) =>
-    goal.goal_schedules?.some(
-      (schedule) =>
-        schedule.day_of_week === dayOfWeek
-    )
+  const todaysGoals = goals.filter(
+    (goal) =>
+      goal.goal_schedules?.some(
+        (schedule) =>
+          schedule.day_of_week ===
+          dayOfWeek
+      )
   );
 
   /*
-   * Focus preference.
+   * Focus preferences.
    */
   const focusMinutes =
     focusPreference?.preset === "deep"
       ? 45
-      : focusPreference?.preset === "custom"
+      : focusPreference?.preset ===
+          "custom"
         ? focusPreference.custom_focus_minutes
         : 25;
 
   const breakMinutes =
     focusPreference?.preset === "deep"
       ? 10
-      : focusPreference?.preset === "custom"
+      : focusPreference?.preset ===
+          "custom"
         ? focusPreference.custom_break_minutes
         : 5;
 
   const focusLabel =
     focusPreference?.preset === "deep"
       ? "Deep Focus"
-      : focusPreference?.preset === "custom"
+      : focusPreference?.preset ===
+          "custom"
         ? "Custom Focus"
         : "Pomodoro";
 
   /*
-   * Calculate real weekly progress.
+   * Calculate progress for each goal.
    */
   const progressByGoal = new Map<
     string,
@@ -210,17 +287,43 @@ export default async function TodayPage() {
   >();
 
   for (const goal of goals) {
-    const sessionsForGoal = focusSessions.filter(
-      (session) => session.goal_id === goal.id
-    );
+    /*
+     * Completed focus sessions associated with this
+     * specific goal.
+     */
+    const sessionsForGoal =
+      focusSessions.filter(
+        (session) =>
+          session.goal_id === goal.id
+      );
 
     let value = 0;
 
-    if (goal.measurement_type === "sessions") {
+    /*
+     * SESSION GOALS
+     *
+     * Example:
+     * Career
+     * 3 sessions/week
+     */
+    if (
+      goal.measurement_type ===
+      "sessions"
+    ) {
       value = sessionsForGoal.length;
     }
 
-    if (goal.measurement_type === "minutes") {
+    /*
+     * MINUTE GOALS
+     *
+     * Example:
+     * Personal Projects
+     * 240 minutes/week
+     */
+    if (
+      goal.measurement_type ===
+      "minutes"
+    ) {
       const totalSeconds =
         sessionsForGoal.reduce(
           (total, session) =>
@@ -229,22 +332,45 @@ export default async function TodayPage() {
           0
         );
 
-      value = Math.floor(totalSeconds / 60);
+      value = Math.floor(
+        totalSeconds / 60
+      );
     }
 
     /*
-     * Count-based goals will later use explicit task/item
-     * completion instead of assuming a focus session
-     * equals a completed output.
+     * COUNT GOALS
+     *
+     * Example:
+     * Side Income
+     * 5 outputs/week
+     *
+     * These use explicit goal_completions rather
+     * than focus sessions.
      */
-    if (goal.measurement_type === "count") {
-      value = 0;
+    if (
+      goal.measurement_type ===
+      "count"
+    ) {
+      value = goalCompletions
+        .filter(
+          (completion) =>
+            completion.goal_id ===
+            goal.id
+        )
+        .reduce(
+          (total, completion) =>
+            total +
+            completion.quantity,
+          0
+        );
     }
 
     const percentage =
       goal.weekly_target > 0
         ? Math.min(
-            (value / goal.weekly_target) * 100,
+            (value /
+              goal.weekly_target) *
+              100,
             100
           )
         : 0;
@@ -265,7 +391,10 @@ export default async function TodayPage() {
           <div>
             <div className="mb-6 flex items-center gap-2 text-lg font-bold text-[#45634c]">
               <span>🌱</span>
-              <span>Momentum</span>
+
+              <span>
+                Momentum
+              </span>
             </div>
 
             <p className="text-sm font-medium text-[#6c8772]">
@@ -283,7 +412,10 @@ export default async function TodayPage() {
 
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#dce7de] bg-white px-4 py-2 text-sm text-[#52735a]">
             <span>🔥</span>
-            <span>Build your momentum</span>
+
+            <span>
+              Build your momentum
+            </span>
           </div>
         </header>
 
@@ -319,47 +451,52 @@ export default async function TodayPage() {
 
             {todaysGoals.length > 0 ? (
               <div className="mt-6 space-y-3">
-                {todaysGoals.map((goal) => {
-                  const todaySchedule =
-                    goal.goal_schedules.find(
-                      (schedule) =>
-                        schedule.day_of_week ===
-                        dayOfWeek
-                    );
+                {todaysGoals.map(
+                  (goal) => {
+                    const todaySchedule =
+                      goal.goal_schedules.find(
+                        (schedule) =>
+                          schedule.day_of_week ===
+                          dayOfWeek
+                      );
 
-                  const duration =
-                    todaySchedule?.duration_minutes ??
-                    goal.default_duration_minutes;
+                    const duration =
+                      todaySchedule?.duration_minutes ??
+                      goal.default_duration_minutes;
 
-                  return (
-                    <div
-                      key={goal.id}
-                      className="group flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-[#fbfcfb] p-4 transition hover:border-[#dce7de] hover:bg-[#f7faf7]"
-                    >
-                      <div className="flex min-w-0 items-center gap-4">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef4ef] text-xl">
-                          {goal.icon || "🎯"}
+                    return (
+                      <div
+                        key={goal.id}
+                        className="group flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-[#fbfcfb] p-4 transition hover:border-[#dce7de] hover:bg-[#f7faf7]"
+                      >
+                        <div className="flex min-w-0 items-center gap-4">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#eef4ef] text-xl">
+                            {goal.icon ||
+                              "🎯"}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {goal.name}
+                            </p>
+
+                            <p className="mt-1 text-sm text-gray-400">
+                              {formatGoalTarget(
+                                goal
+                              )}
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            {goal.name}
-                          </p>
-
-                          <p className="mt-1 text-sm text-gray-400">
-                            {formatGoalTarget(goal)}
-                          </p>
-                        </div>
+                        {duration && (
+                          <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm ring-1 ring-gray-100">
+                            {duration} min
+                          </span>
+                        )}
                       </div>
-
-                      {duration && (
-                        <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm ring-1 ring-gray-100">
-                          {duration} min
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  }
+                )}
               </div>
             ) : (
               <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-[#fbfcfb] px-6 py-10 text-center">
@@ -372,9 +509,9 @@ export default async function TodayPage() {
                 </p>
 
                 <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-gray-400">
-                  Use today to recharge or make
-                  progress on something that feels
-                  important.
+                  Use today to recharge or
+                  make progress on something
+                  that feels important.
                 </p>
               </div>
             )}
@@ -384,6 +521,7 @@ export default async function TodayPage() {
 
           <section className="relative overflow-hidden rounded-3xl bg-[#45634c] p-6 text-white shadow-sm sm:p-8">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/5" />
+
             <div className="absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-white/5" />
 
             <div className="relative">
@@ -449,10 +587,16 @@ export default async function TodayPage() {
             <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {goals.map((goal) => {
                 const progress =
-                  progressByGoal.get(goal.id) ?? {
+                  progressByGoal.get(
+                    goal.id
+                  ) ?? {
                     value: 0,
                     percentage: 0,
                   };
+
+                const targetReached =
+                  progress.value >=
+                  goal.weekly_target;
 
                 return (
                   <div
@@ -462,7 +606,8 @@ export default async function TodayPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef4ef] text-lg">
-                          {goal.icon || "🎯"}
+                          {goal.icon ||
+                            "🎯"}
                         </div>
 
                         <div>
@@ -471,10 +616,18 @@ export default async function TodayPage() {
                           </p>
 
                           <p className="mt-0.5 text-xs text-gray-400">
-                            {formatGoalTarget(goal)}
+                            {formatGoalTarget(
+                              goal
+                            )}
                           </p>
                         </div>
                       </div>
+
+                      {targetReached && (
+                        <span className="rounded-full bg-[#e7eee8] px-2.5 py-1 text-xs font-medium text-[#45634c]">
+                          ✓ Goal
+                        </span>
+                      )}
                     </div>
 
                     <div className="mt-5">
@@ -500,10 +653,19 @@ export default async function TodayPage() {
 
                       {goal.measurement_type ===
                         "count" && (
-                        <p className="mt-3 text-xs leading-5 text-gray-400">
-                          Item completion tracking is
-                          coming next.
-                        </p>
+                        <div className="mt-4">
+                          <GoalCompletionButton
+                            userId={
+                              user.id
+                            }
+                            goalId={
+                              goal.id
+                            }
+                            goalName={
+                              goal.name
+                            }
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -517,10 +679,12 @@ export default async function TodayPage() {
           )}
         </section>
 
+        {/* Footer */}
+
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-400">
-            🌱 Momentum rewards showing up — not being
-            busy.
+            🌱 Momentum rewards showing up —
+            not being busy.
           </p>
         </div>
       </div>
@@ -529,11 +693,8 @@ export default async function TodayPage() {
 }
 
 /*
- * Calculate the current Monday -> next Monday range.
- *
- * The user's local calendar determines which dates belong
- * to the week. We then convert those local midnights into
- * UTC timestamps for querying timestamptz columns.
+ * Determine the current Monday -> next Monday range
+ * according to the user's local calendar.
  */
 function getWeekRange(
   now: Date,
@@ -542,11 +703,16 @@ function getWeekRange(
   start: string;
   end: string;
 } {
-  const localParts = getLocalDateParts(
-    now,
-    timeZone
-  );
+  const localParts =
+    getLocalDateParts(
+      now,
+      timeZone
+    );
 
+  /*
+   * Represent the local calendar date temporarily as UTC.
+   * This is only used for calendar arithmetic.
+   */
   const localDateAsUtc = new Date(
     Date.UTC(
       localParts.year,
@@ -555,56 +721,83 @@ function getWeekRange(
     )
   );
 
-  const jsDay = localDateAsUtc.getUTCDay();
+  const jsDay =
+    localDateAsUtc.getUTCDay();
 
+  /*
+   * JavaScript:
+   * Sunday = 0
+   * Monday = 1
+   * ...
+   */
   const mondayOffset =
-    jsDay === 0 ? -6 : 1 - jsDay;
+    jsDay === 0
+      ? -6
+      : 1 - jsDay;
 
-  const monday = new Date(localDateAsUtc);
+  const monday =
+    new Date(localDateAsUtc);
 
   monday.setUTCDate(
-    localDateAsUtc.getUTCDate() + mondayOffset
+    localDateAsUtc.getUTCDate() +
+      mondayOffset
   );
 
-  const nextMonday = new Date(monday);
+  const nextMonday =
+    new Date(monday);
 
   nextMonday.setUTCDate(
     monday.getUTCDate() + 7
   );
 
   return {
-    start: localMidnightToUtcIso(
-      monday,
-      timeZone
-    ),
-    end: localMidnightToUtcIso(
-      nextMonday,
-      timeZone
-    ),
+    start:
+      localMidnightToUtcIso(
+        monday,
+        timeZone
+      ),
+
+    end:
+      localMidnightToUtcIso(
+        nextMonday,
+        timeZone
+      ),
   };
 }
 
+/*
+ * Get the calendar date currently visible to the user
+ * in their configured timezone.
+ */
 function getLocalDateParts(
   date: Date,
   timeZone: string
 ) {
-  const formatter = new Intl.DateTimeFormat(
-    "en-US",
-    {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }
-  );
+  const formatter =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }
+    );
 
-  const parts = formatter.formatToParts(date);
+  const parts =
+    formatter.formatToParts(date);
 
-  const values: Record<string, string> = {};
+  const values: Record<
+    string,
+    string
+  > = {};
 
   for (const part of parts) {
-    if (part.type !== "literal") {
-      values[part.type] = part.value;
+    if (
+      part.type !== "literal"
+    ) {
+      values[part.type] =
+        part.value;
     }
   }
 
@@ -616,19 +809,21 @@ function getLocalDateParts(
 }
 
 /*
- * Convert midnight on a specific calendar date in a
- * particular IANA timezone into the corresponding UTC
- * timestamp.
- *
- * This avoids assuming that every user is UTC+8.
+ * Convert midnight on a calendar date in an arbitrary
+ * IANA timezone into its UTC timestamptz equivalent.
  */
 function localMidnightToUtcIso(
   calendarDate: Date,
   timeZone: string
 ): string {
-  const year = calendarDate.getUTCFullYear();
-  const month = calendarDate.getUTCMonth();
-  const day = calendarDate.getUTCDate();
+  const year =
+    calendarDate.getUTCFullYear();
+
+  const month =
+    calendarDate.getUTCMonth();
+
+  const day =
+    calendarDate.getUTCDate();
 
   let guess = Date.UTC(
     year,
@@ -640,64 +835,87 @@ function localMidnightToUtcIso(
   );
 
   /*
-   * Two passes handle timezone offsets and DST changes
-   * around the target date.
+   * Two passes allow the timezone offset to settle,
+   * including DST changes.
    */
-  for (let i = 0; i < 2; i += 1) {
-    const parts = getZonedDateTimeParts(
-      new Date(guess),
-      timeZone
-    );
+  for (
+    let iteration = 0;
+    iteration < 2;
+    iteration += 1
+  ) {
+    const parts =
+      getZonedDateTimeParts(
+        new Date(guess),
+        timeZone
+      );
 
-    const representedAsUtc = Date.UTC(
-      parts.year,
-      parts.month - 1,
-      parts.day,
-      parts.hour,
-      parts.minute,
-      parts.second
-    );
+    const representedAsUtc =
+      Date.UTC(
+        parts.year,
+        parts.month - 1,
+        parts.day,
+        parts.hour,
+        parts.minute,
+        parts.second
+      );
 
-    const desiredAsUtc = Date.UTC(
-      year,
-      month,
-      day,
-      0,
-      0,
-      0
-    );
+    const desiredAsUtc =
+      Date.UTC(
+        year,
+        month,
+        day,
+        0,
+        0,
+        0
+      );
 
-    guess += desiredAsUtc - representedAsUtc;
+    guess +=
+      desiredAsUtc -
+      representedAsUtc;
   }
 
-  return new Date(guess).toISOString();
+  return new Date(
+    guess
+  ).toISOString();
 }
 
+/*
+ * Get full date/time components as seen in a particular
+ * timezone.
+ */
 function getZonedDateTimeParts(
   date: Date,
   timeZone: string
 ) {
-  const formatter = new Intl.DateTimeFormat(
-    "en-US",
-    {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    }
-  );
+  const formatter =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      }
+    );
 
-  const parts = formatter.formatToParts(date);
+  const parts =
+    formatter.formatToParts(date);
 
-  const values: Record<string, string> = {};
+  const values: Record<
+    string,
+    string
+  > = {};
 
   for (const part of parts) {
-    if (part.type !== "literal") {
-      values[part.type] = part.value;
+    if (
+      part.type !== "literal"
+    ) {
+      values[part.type] =
+        part.value;
     }
   }
 
@@ -711,8 +929,16 @@ function getZonedDateTimeParts(
   };
 }
 
-function formatGoalTarget(goal: Goal) {
-  if (goal.measurement_type === "sessions") {
+/*
+ * Human-readable weekly target.
+ */
+function formatGoalTarget(
+  goal: Goal
+) {
+  if (
+    goal.measurement_type ===
+    "sessions"
+  ) {
     return `${goal.weekly_target} ${
       goal.weekly_target === 1
         ? "session"
@@ -720,7 +946,10 @@ function formatGoalTarget(goal: Goal) {
     } / week`;
   }
 
-  if (goal.measurement_type === "minutes") {
+  if (
+    goal.measurement_type ===
+    "minutes"
+  ) {
     return `${goal.weekly_target} minutes / week`;
   }
 
