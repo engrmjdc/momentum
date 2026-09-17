@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ProjectStatusActions from "./project-status-actions";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalDateKey } from "@/lib/date-utils";
@@ -91,6 +92,7 @@ export default async function ProjectsPage() {
                               </p>
                             </div>
                             <Link href={`/projects/${project.id}/edit`} className="mt-5 inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">Edit Project<span className="sr-only">: {project.name}</span></Link>
+                            <ProjectStatusActions key={`${project.id}-${project.status}`} projectId={project.id} projectName={project.name} status={project.status} />
                           </article>
                         );
                       })}
