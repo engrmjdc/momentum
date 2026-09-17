@@ -48,7 +48,7 @@ function LoginForm() {
         throw signInError;
       }
 
-      router.replace("/onboarding");
+      router.replace("/today");
       router.refresh();
     } catch (error) {
       console.error("Login failed:", error);
