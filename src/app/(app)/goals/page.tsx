@@ -95,10 +95,13 @@ export default async function GoalsPage() {
   return (
     <main className="min-h-screen bg-[#f7f9f6] text-[#171717]">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
-        <header>
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">Goals</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Your Goals</h1>
           <p className="mt-2 text-gray-500">Build consistency around what matters to you.</p>
+          </div>
+          <Link href="/goals/new" className="self-start rounded-xl bg-[#45634c] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#354e3b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">+ Create Goal</Link>
         </header>
 
         {queryError ? (
