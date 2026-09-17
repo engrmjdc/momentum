@@ -7,11 +7,22 @@ import { createClient } from "@/lib/supabase/server";
 
 import {
   formatLocalDate,
+  getLocalDateKey,
   getLocalDayOfWeek,
   getLocalDayRange,
+  getLocalDayOffsetStart,
   getLocalHour,
   getLocalWeekRange,
 } from "@/lib/date-utils";
+
+import {
+  buildActivityStrip,
+  calculateStreaks,
+} from "@/lib/streaks";
+
+/*
+ * TYPES
+ */
 
 type GoalSchedule = {
   day_of_week: number;
@@ -30,9 +41,7 @@ type Goal = {
 
   weekly_target: number;
 
-  default_duration_minutes:
-    | number
-    | null;
+  default_duration_minutes: number | null;
 
   goal_schedules: GoalSchedule[];
 };
@@ -76,9 +85,16 @@ type TodayProgress = {
   completed: boolean;
 };
 
+/*
+ * PAGE
+ */
+
 export default async function TodayPage() {
-  const supabase =
-    await createClient();
+  const supabase = await createClient();
+
+  /*
+   * AUTH
+   */
 
   const {
     data: { user },
@@ -97,12 +113,10 @@ export default async function TodayPage() {
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select(
-      `
-        display_name,
-        timezone
-      `
-    )
+    .select(`
+      display_name,
+      timezone
+    `)
     .eq("id", user.id)
     .single();
 
@@ -114,13 +128,12 @@ export default async function TodayPage() {
   }
 
   const timezone =
-    profile?.timezone ||
-    "Asia/Manila";
+    profile?.timezone || "Asia/Manila";
 
   const now = new Date();
 
   /*
-   * LOCAL DATE BOUNDARIES
+   * LOCAL DATE INFORMATION
    */
 
   const dayOfWeek =
@@ -141,6 +154,25 @@ export default async function TodayPage() {
       timezone
     );
 
+  const todayDateKey =
+    getLocalDateKey(
+      now,
+      timezone
+    );
+
+  /*
+   * Load one year of activity history.
+   *
+   * This keeps the query bounded while giving us enough
+   * data for a meaningful longest-streak calculation.
+   */
+  const activityHistoryStart =
+    getLocalDayOffsetStart(
+      now,
+      timezone,
+      -365
+    );
+
   /*
    * LOAD DASHBOARD DATA
    */
@@ -152,9 +184,11 @@ export default async function TodayPage() {
     weeklyCompletionResult,
     todayFocusResult,
     todayCompletionResult,
+    activityFocusResult,
+    activityCompletionResult,
   ] = await Promise.all([
     /*
-     * Active goals + schedules.
+     * Active goals and their schedules.
      */
     supabase
       .from("goals")
@@ -180,45 +214,33 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Focus preference.
+     * Focus preferences.
      */
     supabase
-      .from(
-        "focus_preferences"
-      )
+      .from("focus_preferences")
       .select(`
         preset,
         custom_focus_minutes,
         custom_break_minutes
       `)
-      .eq(
-        "user_id",
-        user.id
-      )
+      .eq("user_id", user.id)
       .maybeSingle(),
 
     /*
-     * Completed focus sessions
-     * for the current week.
+     * Completed focus sessions this week.
+     *
+     * Used for weekly session/minute progress.
      */
     supabase
-      .from(
-        "focus_sessions"
-      )
+      .from("focus_sessions")
       .select(`
         goal_id,
         actual_duration_seconds,
         status,
         completed_at
       `)
-      .eq(
-        "user_id",
-        user.id
-      )
-      .eq(
-        "status",
-        "completed"
-      )
+      .eq("user_id", user.id)
+      .eq("status", "completed")
       .gte(
         "completed_at",
         weekRange.start
@@ -229,22 +251,18 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Explicit count completions
-     * for the current week.
+     * Explicit goal completions this week.
+     *
+     * Used for count-based weekly progress.
      */
     supabase
-      .from(
-        "goal_completions"
-      )
+      .from("goal_completions")
       .select(`
         goal_id,
         quantity,
         completed_at
       `)
-      .eq(
-        "user_id",
-        user.id
-      )
+      .eq("user_id", user.id)
       .gte(
         "completed_at",
         weekRange.start
@@ -255,27 +273,20 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Today's completed focus
-     * sessions.
+     * Completed focus sessions today.
+     *
+     * Used for Today's Plan.
      */
     supabase
-      .from(
-        "focus_sessions"
-      )
+      .from("focus_sessions")
       .select(`
         goal_id,
         actual_duration_seconds,
         status,
         completed_at
       `)
-      .eq(
-        "user_id",
-        user.id
-      )
-      .eq(
-        "status",
-        "completed"
-      )
+      .eq("user_id", user.id)
+      .eq("status", "completed")
       .gte(
         "completed_at",
         dayRange.start
@@ -286,22 +297,16 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Today's explicit count
-     * completions.
+     * Explicit output completions today.
      */
     supabase
-      .from(
-        "goal_completions"
-      )
+      .from("goal_completions")
       .select(`
         goal_id,
         quantity,
         completed_at
       `)
-      .eq(
-        "user_id",
-        user.id
-      )
+      .eq("user_id", user.id)
       .gte(
         "completed_at",
         dayRange.start
@@ -309,12 +314,49 @@ export default async function TodayPage() {
       .lt(
         "completed_at",
         dayRange.end
+      ),
+
+    /*
+     * Completed focus history.
+     *
+     * Used for streak calculations.
+     */
+    supabase
+      .from("focus_sessions")
+      .select(`
+        completed_at
+      `)
+      .eq("user_id", user.id)
+      .eq("status", "completed")
+      .gte(
+        "completed_at",
+        activityHistoryStart
+      )
+      .not(
+        "completed_at",
+        "is",
+        null
+      ),
+
+    /*
+     * Explicit completion history.
+     *
+     * Also counts toward active days.
+     */
+    supabase
+      .from("goal_completions")
+      .select(`
+        completed_at
+      `)
+      .eq("user_id", user.id)
+      .gte(
+        "completed_at",
+        activityHistoryStart
       ),
   ]);
 
   /*
-   * Report query failures without
-   * crashing the whole dashboard.
+   * QUERY ERROR REPORTING
    */
 
   if (goalsResult.error) {
@@ -324,48 +366,52 @@ export default async function TodayPage() {
     );
   }
 
-  if (
-    preferenceResult.error
-  ) {
+  if (preferenceResult.error) {
     console.error(
       "Unable to load focus preferences:",
       preferenceResult.error
     );
   }
 
-  if (
-    weeklyFocusResult.error
-  ) {
+  if (weeklyFocusResult.error) {
     console.error(
       "Unable to load weekly focus sessions:",
       weeklyFocusResult.error
     );
   }
 
-  if (
-    weeklyCompletionResult.error
-  ) {
+  if (weeklyCompletionResult.error) {
     console.error(
       "Unable to load weekly goal completions:",
       weeklyCompletionResult.error
     );
   }
 
-  if (
-    todayFocusResult.error
-  ) {
+  if (todayFocusResult.error) {
     console.error(
       "Unable to load today's focus sessions:",
       todayFocusResult.error
     );
   }
 
-  if (
-    todayCompletionResult.error
-  ) {
+  if (todayCompletionResult.error) {
     console.error(
       "Unable to load today's goal completions:",
       todayCompletionResult.error
+    );
+  }
+
+  if (activityFocusResult.error) {
+    console.error(
+      "Unable to load focus activity history:",
+      activityFocusResult.error
+    );
+  }
+
+  if (activityCompletionResult.error) {
+    console.error(
+      "Unable to load completion activity history:",
+      activityCompletionResult.error
     );
   }
 
@@ -374,8 +420,7 @@ export default async function TodayPage() {
    */
 
   const goals =
-    (goalsResult.data ??
-      []) as Goal[];
+    (goalsResult.data ?? []) as Goal[];
 
   const focusPreference =
     preferenceResult.data as
@@ -442,7 +487,7 @@ export default async function TodayPage() {
     );
 
   /*
-   * FOCUS PREFERENCE
+   * FOCUS PREFERENCES
    */
 
   const focusMinutes =
@@ -492,6 +537,10 @@ export default async function TodayPage() {
 
     let value = 0;
 
+    /*
+     * SESSION GOALS
+     */
+
     if (
       goal.measurement_type ===
       "sessions"
@@ -499,6 +548,10 @@ export default async function TodayPage() {
       value =
         sessionsForGoal.length;
     }
+
+    /*
+     * MINUTE GOALS
+     */
 
     if (
       goal.measurement_type ===
@@ -519,6 +572,10 @@ export default async function TodayPage() {
         totalSeconds / 60
       );
     }
+
+    /*
+     * COUNT GOALS
+     */
 
     if (
       goal.measurement_type ===
@@ -562,12 +619,7 @@ export default async function TodayPage() {
   }
 
   /*
-   * TODAY PROGRESS
-   *
-   * This is derived from actual
-   * activity. We do not store a
-   * separate "today completed"
-   * boolean.
+   * TODAY'S PLAN PROGRESS
    */
 
   const todayProgressByGoal =
@@ -599,10 +651,10 @@ export default async function TodayPage() {
       );
 
     /*
-     * Session goal:
-     * at least one completed focus
-     * session today counts as
-     * showing up.
+     * SESSION GOAL
+     *
+     * One completed focus session today means the
+     * scheduled activity has been completed.
      */
     if (
       goal.measurement_type ===
@@ -625,11 +677,9 @@ export default async function TodayPage() {
     }
 
     /*
-     * Minutes goal:
-     * compare today's completed
-     * focus minutes against the
-     * scheduled duration.
+     * MINUTE GOAL
      */
+
     if (
       goal.measurement_type ===
       "minutes"
@@ -670,10 +720,9 @@ export default async function TodayPage() {
     }
 
     /*
-     * Count goal:
-     * at least one explicitly
-     * completed output today.
+     * COUNT GOAL
      */
+
     const value =
       todayGoalCompletions
         .filter(
@@ -702,6 +751,10 @@ export default async function TodayPage() {
     );
   }
 
+  /*
+   * TODAY SUMMARY
+   */
+
   const completedTodayCount =
     todaysGoals.filter(
       (goal) =>
@@ -716,6 +769,62 @@ export default async function TodayPage() {
       todaysGoals.length;
 
   /*
+   * ACTIVITY HISTORY
+   *
+   * Both completed focus sessions and explicit output
+   * completions count as activity.
+   */
+
+  const activeDateKeys = [
+    ...(activityFocusResult.data ?? [])
+      .filter(
+        (session) =>
+          session.completed_at !== null
+      )
+      .map((session) =>
+        getLocalDateKey(
+          new Date(
+            session.completed_at!
+          ),
+          timezone
+        )
+      ),
+
+    ...(activityCompletionResult.data ??
+      []).map((completion) =>
+      getLocalDateKey(
+        new Date(
+          completion.completed_at
+        ),
+        timezone
+      )
+    ),
+  ];
+
+  /*
+   * STREAKS
+   */
+
+  const {
+    currentStreak,
+    longestStreak,
+  } = calculateStreaks(
+    activeDateKeys,
+    todayDateKey
+  );
+
+  /*
+   * LAST 7 DAYS
+   */
+
+  const activityStrip =
+    buildActivityStrip(
+      activeDateKeys,
+      todayDateKey,
+      7
+    );
+
+  /*
    * UI
    */
 
@@ -728,7 +837,9 @@ export default async function TodayPage() {
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="mb-6 flex items-center gap-2 text-lg font-bold text-[#45634c]">
-              <span>🌱</span>
+              <span>
+                🌱
+              </span>
 
               <span>
                 Momentum
@@ -795,6 +906,8 @@ export default async function TodayPage() {
               </div>
             </div>
 
+            {/* COMPLETION MESSAGE */}
+
             {allTodayCompleted && (
               <div className="mt-6 rounded-2xl border border-[#dce7de] bg-[#f2f7f3] p-4">
                 <div className="flex gap-3">
@@ -818,6 +931,8 @@ export default async function TodayPage() {
                 </div>
               </div>
             )}
+
+            {/* TODAY GOALS */}
 
             {todaysGoals.length >
             0 ? (
@@ -856,6 +971,9 @@ export default async function TodayPage() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex min-w-0 gap-4">
+
+                            {/* ICON */}
+
                             <div
                               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${
                                 todayProgress.completed
@@ -868,6 +986,8 @@ export default async function TodayPage() {
                                 : goal.icon ||
                                   "🎯"}
                             </div>
+
+                            {/* INFO */}
 
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
@@ -909,6 +1029,8 @@ export default async function TodayPage() {
                             </div>
                           </div>
 
+                          {/* DURATION */}
+
                           {duration && (
                             <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm ring-1 ring-gray-100">
                               {
@@ -918,6 +1040,8 @@ export default async function TodayPage() {
                             </span>
                           )}
                         </div>
+
+                        {/* ACTION */}
 
                         {!todayProgress.completed && (
                           <div className="mt-4 border-t border-gray-100 pt-4">
@@ -972,7 +1096,7 @@ export default async function TodayPage() {
             )}
           </section>
 
-          {/* FOCUS CARD */}
+          {/* FOCUS */}
 
           <section className="relative overflow-hidden rounded-3xl bg-[#45634c] p-6 text-white shadow-sm sm:p-8">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/5" />
@@ -1149,6 +1273,94 @@ export default async function TodayPage() {
           )}
         </section>
 
+        {/* STREAK */}
+
+        <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* STREAK INFO */}
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">
+                Consistency
+              </p>
+
+              <div className="mt-3 flex items-end gap-3">
+                <div className="text-3xl">
+                  🔥
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-semibold tracking-tight text-gray-900">
+                      {
+                        currentStreak
+                      }
+                    </span>
+
+                    <span className="text-sm text-gray-500">
+                      day{" "}
+                      {currentStreak ===
+                      1
+                        ? "streak"
+                        : "streak"}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Longest streak:{" "}
+                    {
+                      longestStreak
+                    }{" "}
+                    {longestStreak ===
+                    1
+                      ? "day"
+                      : "days"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ACTIVITY STRIP */}
+
+            <div className="w-full sm:w-auto">
+              <p className="mb-3 text-xs font-medium text-gray-400 sm:text-right">
+                Last 7 days
+              </p>
+
+              <div className="flex justify-between gap-2 sm:justify-end">
+                {activityStrip.map(
+                  (day) => (
+                    <ActivityDayItem
+                      key={
+                        day.dateKey
+                      }
+                      dateKey={
+                        day.dateKey
+                      }
+                      active={
+                        day.active
+                      }
+                      todayDateKey={
+                        todayDateKey
+                      }
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-gray-100 pt-4">
+            <p className="text-xs leading-5 text-gray-400">
+              Any completed focus
+              session or completed
+              output counts as an
+              active day.
+            </p>
+          </div>
+        </section>
+
         {/* FOOTER */}
 
         <div className="mt-8 text-center">
@@ -1164,7 +1376,75 @@ export default async function TodayPage() {
 }
 
 /*
- * TODAY STATUS COMPONENT
+ * ACTIVITY DAY
+ */
+
+function ActivityDayItem({
+  dateKey,
+  active,
+  todayDateKey,
+}: {
+  dateKey: string;
+  active: boolean;
+  todayDateKey: string;
+}) {
+  const date =
+    dateKeyToDisplayDate(
+      dateKey
+    );
+
+  const dayLabel =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        weekday: "narrow",
+        timeZone: "UTC",
+      }
+    ).format(date);
+
+  const dayNumber =
+    date.getUTCDate();
+
+  const isToday =
+    dateKey ===
+    todayDateKey;
+
+  return (
+    <div className="flex min-w-9 flex-col items-center gap-2">
+      <span
+        className={`text-[11px] font-medium ${
+          isToday
+            ? "text-[#45634c]"
+            : "text-gray-400"
+        }`}
+      >
+        {dayLabel}
+      </span>
+
+      <div
+        title={`${dateKey}${
+          active
+            ? " · Active"
+            : " · No activity"
+        }`}
+        className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition ${
+          active
+            ? "bg-[#45634c] text-white"
+            : isToday
+              ? "border border-[#b9cbbb] bg-[#f2f7f3] text-[#45634c]"
+              : "bg-gray-100 text-gray-400"
+        }`}
+      >
+        {active
+          ? "✓"
+          : dayNumber}
+      </div>
+    </div>
+  );
+}
+
+/*
+ * TODAY STATUS
  */
 
 function TodayStatus({
@@ -1174,6 +1454,10 @@ function TodayStatus({
   goal: Goal;
   progress: TodayProgress;
 }) {
+  /*
+   * COMPLETED
+   */
+
   if (progress.completed) {
     if (
       goal.measurement_type ===
@@ -1209,6 +1493,10 @@ function TodayStatus({
       </p>
     );
   }
+
+  /*
+   * MINUTES
+   */
 
   if (
     goal.measurement_type ===
@@ -1249,6 +1537,10 @@ function TodayStatus({
     );
   }
 
+  /*
+   * COUNT
+   */
+
   if (
     goal.measurement_type ===
     "count"
@@ -1261,6 +1553,10 @@ function TodayStatus({
     );
   }
 
+  /*
+   * SESSION
+   */
+
   return (
     <p className="text-xs text-gray-400">
       No focus session completed
@@ -1270,7 +1566,7 @@ function TodayStatus({
 }
 
 /*
- * WEEKLY TARGET LABEL
+ * WEEKLY GOAL LABEL
  */
 
 function formatGoalTarget(
@@ -1299,4 +1595,32 @@ function formatGoalTarget(
       ? "item"
       : "items"
   } / week`;
+}
+
+/*
+ * YYYY-MM-DD -> UTC Date
+ *
+ * UTC is intentional here because we're only using the
+ * Date object to display the calendar weekday/date from
+ * an already-normalized local date key.
+ */
+
+function dateKeyToDisplayDate(
+  dateKey: string
+): Date {
+  const [
+    year,
+    month,
+    day,
+  ] = dateKey
+    .split("-")
+    .map(Number);
+
+  return new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day
+    )
+  );
 }

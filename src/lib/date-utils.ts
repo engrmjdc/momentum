@@ -13,6 +13,12 @@ export type DateRange = {
   end: string;
 };
 
+export type LocalCalendarDate = {
+  year: number;
+  month: number;
+  day: number;
+};
+
 export function getLocalDayOfWeek(
   date: Date,
   timeZone: string
@@ -48,6 +54,79 @@ export function formatLocalDate(
     month: "long",
     day: "numeric",
   }).format(date);
+}
+
+/*
+ * Returns YYYY-MM-DD according to the user's timezone.
+ *
+ * This becomes the canonical key for streak/calendar logic.
+ */
+export function getLocalDateKey(
+  date: Date,
+  timeZone: string
+): string {
+  const parts = getLocalDateParts(date, timeZone);
+
+  return buildDateKey(
+    parts.year,
+    parts.month,
+    parts.day
+  );
+}
+
+/*
+ * Move a local calendar date by N days.
+ *
+ * Important:
+ * We perform calendar arithmetic using UTC only as a
+ * neutral calendar representation. This prevents the
+ * server's own timezone from affecting the result.
+ */
+export function shiftDateKey(
+  dateKey: string,
+  amount: number
+): string {
+  const [year, month, day] = dateKey
+    .split("-")
+    .map(Number);
+
+  const date = new Date(
+    Date.UTC(year, month - 1, day)
+  );
+
+  date.setUTCDate(
+    date.getUTCDate() + amount
+  );
+
+  return buildDateKey(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate()
+  );
+}
+
+/*
+ * Difference between two YYYY-MM-DD calendar keys.
+ *
+ * Example:
+ * 2026-09-17 -> 2026-09-18 = 1
+ */
+export function differenceInCalendarDays(
+  earlierDateKey: string,
+  laterDateKey: string
+): number {
+  const earlier =
+    dateKeyToUtcCalendarDate(earlierDateKey);
+
+  const later =
+    dateKeyToUtcCalendarDate(laterDateKey);
+
+  const milliseconds =
+    later.getTime() - earlier.getTime();
+
+  return Math.round(
+    milliseconds / 86_400_000
+  );
 }
 
 export function getLocalDayRange(
@@ -106,9 +185,7 @@ export function getLocalWeekRange(
     localDateAsUtc.getUTCDay();
 
   const mondayOffset =
-    jsDay === 0
-      ? -6
-      : 1 - jsDay;
+    jsDay === 0 ? -6 : 1 - jsDay;
 
   const monday = new Date(
     localDateAsUtc
@@ -137,10 +214,44 @@ export function getLocalWeekRange(
   };
 }
 
+/*
+ * Returns an ISO timestamp representing midnight N
+ * calendar days before/after the user's current local day.
+ *
+ * Useful for bounded activity queries.
+ */
+export function getLocalDayOffsetStart(
+  now: Date,
+  timeZone: string,
+  offset: number
+): string {
+  const parts = getLocalDateParts(
+    now,
+    timeZone
+  );
+
+  const calendarDate = new Date(
+    Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day
+    )
+  );
+
+  calendarDate.setUTCDate(
+    calendarDate.getUTCDate() + offset
+  );
+
+  return localMidnightToUtcIso(
+    calendarDate,
+    timeZone
+  );
+}
+
 function getLocalDateParts(
   date: Date,
   timeZone: string
-) {
+): LocalCalendarDate {
   const formatter =
     new Intl.DateTimeFormat("en-US", {
       timeZone,
@@ -152,15 +263,11 @@ function getLocalDateParts(
   const parts =
     formatter.formatToParts(date);
 
-  const values: Record<
-    string,
-    string
-  > = {};
+  const values: Record<string, string> = {};
 
   for (const part of parts) {
     if (part.type !== "literal") {
-      values[part.type] =
-        part.value;
+      values[part.type] = part.value;
     }
   }
 
@@ -193,10 +300,6 @@ function localMidnightToUtcIso(
     0
   );
 
-  /*
-   * Two passes allow the timezone offset to settle,
-   * including DST changes.
-   */
   for (
     let iteration = 0;
     iteration < 2;
@@ -233,9 +336,7 @@ function localMidnightToUtcIso(
       representedAsUtc;
   }
 
-  return new Date(
-    guess
-  ).toISOString();
+  return new Date(guess).toISOString();
 }
 
 function getZonedDateTimeParts(
@@ -257,15 +358,11 @@ function getZonedDateTimeParts(
   const parts =
     formatter.formatToParts(date);
 
-  const values: Record<
-    string,
-    string
-  > = {};
+  const values: Record<string, string> = {};
 
   for (const part of parts) {
     if (part.type !== "literal") {
-      values[part.type] =
-        part.value;
+      values[part.type] = part.value;
     }
   }
 
@@ -277,4 +374,28 @@ function getZonedDateTimeParts(
     minute: Number(values.minute),
     second: Number(values.second),
   };
+}
+
+function buildDateKey(
+  year: number,
+  month: number,
+  day: number
+): string {
+  return [
+    year.toString().padStart(4, "0"),
+    month.toString().padStart(2, "0"),
+    day.toString().padStart(2, "0"),
+  ].join("-");
+}
+
+function dateKeyToUtcCalendarDate(
+  dateKey: string
+): Date {
+  const [year, month, day] = dateKey
+    .split("-")
+    .map(Number);
+
+  return new Date(
+    Date.UTC(year, month - 1, day)
+  );
 }
