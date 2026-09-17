@@ -20,6 +20,12 @@ import {
   calculateStreaks,
 } from "@/lib/streaks";
 
+import {
+  buildActivityCalendar,
+  buildActivityCounts,
+  getActivityLevel,
+} from "@/lib/activity";
+
 /*
  * TYPES
  */
@@ -33,25 +39,14 @@ type Goal = {
   id: string;
   name: string;
   icon: string | null;
-
-  measurement_type:
-    | "sessions"
-    | "minutes"
-    | "count";
-
+  measurement_type: "sessions" | "minutes" | "count";
   weekly_target: number;
-
   default_duration_minutes: number | null;
-
   goal_schedules: GoalSchedule[];
 };
 
 type FocusPreference = {
-  preset:
-    | "pomodoro"
-    | "deep"
-    | "custom";
-
+  preset: "pomodoro" | "deep" | "custom";
   custom_focus_minutes: number;
   custom_break_minutes: number;
 };
@@ -59,12 +54,7 @@ type FocusPreference = {
 type FocusSession = {
   goal_id: string | null;
   actual_duration_seconds: number;
-
-  status:
-    | "in_progress"
-    | "completed"
-    | "cancelled";
-
+  status: "in_progress" | "completed" | "cancelled";
   completed_at: string | null;
 };
 
@@ -161,11 +151,9 @@ export default async function TodayPage() {
     );
 
   /*
-   * Load one year of activity history.
-   *
-   * This keeps the query bounded while giving us enough
-   * data for a meaningful longest-streak calculation.
+   * We use one year of history for streak calculations.
    */
+
   const activityHistoryStart =
     getLocalDayOffsetStart(
       now,
@@ -188,8 +176,9 @@ export default async function TodayPage() {
     activityCompletionResult,
   ] = await Promise.all([
     /*
-     * Active goals and their schedules.
+     * ACTIVE GOALS
      */
+
     supabase
       .from("goals")
       .select(`
@@ -214,8 +203,9 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Focus preferences.
+     * FOCUS PREFERENCES
      */
+
     supabase
       .from("focus_preferences")
       .select(`
@@ -227,10 +217,9 @@ export default async function TodayPage() {
       .maybeSingle(),
 
     /*
-     * Completed focus sessions this week.
-     *
-     * Used for weekly session/minute progress.
+     * WEEKLY FOCUS
      */
+
     supabase
       .from("focus_sessions")
       .select(`
@@ -251,10 +240,9 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Explicit goal completions this week.
-     *
-     * Used for count-based weekly progress.
+     * WEEKLY COUNT COMPLETIONS
      */
+
     supabase
       .from("goal_completions")
       .select(`
@@ -273,10 +261,9 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Completed focus sessions today.
-     *
-     * Used for Today's Plan.
+     * TODAY FOCUS
      */
+
     supabase
       .from("focus_sessions")
       .select(`
@@ -297,8 +284,9 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Explicit output completions today.
+     * TODAY COUNT COMPLETIONS
      */
+
     supabase
       .from("goal_completions")
       .select(`
@@ -317,10 +305,9 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Completed focus history.
-     *
-     * Used for streak calculations.
+     * FOCUS ACTIVITY HISTORY
      */
+
     supabase
       .from("focus_sessions")
       .select(`
@@ -339,10 +326,9 @@ export default async function TodayPage() {
       ),
 
     /*
-     * Explicit completion history.
-     *
-     * Also counts toward active days.
+     * COMPLETION ACTIVITY HISTORY
      */
+
     supabase
       .from("goal_completions")
       .select(`
@@ -356,7 +342,7 @@ export default async function TodayPage() {
   ]);
 
   /*
-   * QUERY ERROR REPORTING
+   * QUERY ERRORS
    */
 
   if (goalsResult.error) {
@@ -487,7 +473,7 @@ export default async function TodayPage() {
     );
 
   /*
-   * FOCUS PREFERENCES
+   * FOCUS SETTINGS
    */
 
   const focusMinutes =
@@ -538,7 +524,7 @@ export default async function TodayPage() {
     let value = 0;
 
     /*
-     * SESSION GOALS
+     * SESSIONS
      */
 
     if (
@@ -550,7 +536,7 @@ export default async function TodayPage() {
     }
 
     /*
-     * MINUTE GOALS
+     * MINUTES
      */
 
     if (
@@ -568,13 +554,14 @@ export default async function TodayPage() {
           0
         );
 
-      value = Math.floor(
-        totalSeconds / 60
-      );
+      value =
+        Math.floor(
+          totalSeconds / 60
+        );
     }
 
     /*
-     * COUNT GOALS
+     * COUNT
      */
 
     if (
@@ -619,7 +606,7 @@ export default async function TodayPage() {
   }
 
   /*
-   * TODAY'S PLAN PROGRESS
+   * TODAY PROGRESS
    */
 
   const todayProgressByGoal =
@@ -651,11 +638,9 @@ export default async function TodayPage() {
       );
 
     /*
-     * SESSION GOAL
-     *
-     * One completed focus session today means the
-     * scheduled activity has been completed.
+     * SESSION GOALS
      */
+
     if (
       goal.measurement_type ===
       "sessions"
@@ -677,7 +662,7 @@ export default async function TodayPage() {
     }
 
     /*
-     * MINUTE GOAL
+     * MINUTE GOALS
      */
 
     if (
@@ -720,7 +705,7 @@ export default async function TodayPage() {
     }
 
     /*
-     * COUNT GOAL
+     * COUNT GOALS
      */
 
     const value =
@@ -770,16 +755,14 @@ export default async function TodayPage() {
 
   /*
    * ACTIVITY HISTORY
-   *
-   * Both completed focus sessions and explicit output
-   * completions count as activity.
    */
 
   const activeDateKeys = [
     ...(activityFocusResult.data ?? [])
       .filter(
         (session) =>
-          session.completed_at !== null
+          session.completed_at !==
+          null
       )
       .map((session) =>
         getLocalDateKey(
@@ -822,6 +805,68 @@ export default async function TodayPage() {
       activeDateKeys,
       todayDateKey,
       7
+    );
+
+  /*
+   * ACTIVITY CALENDAR
+   */
+
+  const activityCounts =
+    buildActivityCounts(
+      activeDateKeys
+    );
+
+  const activityCalendar =
+    buildActivityCalendar(
+      activityCounts,
+      todayDateKey,
+      12
+    );
+
+  /*
+   * CALENDAR SUMMARY
+   *
+   * Only include dates visible inside the 12-week
+   * calendar.
+   */
+
+  const visibleCalendarDateKeys =
+    new Set(
+      activityCalendar.flatMap(
+        (week) =>
+          week.days
+            .filter(
+              (day) =>
+                day.inRange
+            )
+            .map(
+              (day) =>
+                day.dateKey
+            )
+      )
+    );
+
+  const visibleActivityEntries =
+    Array.from(
+      activityCounts.entries()
+    ).filter(
+      ([dateKey]) =>
+        visibleCalendarDateKeys.has(
+          dateKey
+        )
+    );
+
+  const totalActiveDays =
+    visibleActivityEntries.length;
+
+  const totalActivities =
+    visibleActivityEntries.reduce(
+      (
+        total,
+        [, count]
+      ) =>
+        total + count,
+      0
     );
 
   /*
@@ -876,7 +921,7 @@ export default async function TodayPage() {
           </div>
         </header>
 
-        {/* MAIN GRID */}
+        {/* TOP GRID */}
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
 
@@ -906,7 +951,7 @@ export default async function TodayPage() {
               </div>
             </div>
 
-            {/* COMPLETION MESSAGE */}
+            {/* COMPLETE MESSAGE */}
 
             {allTodayCompleted && (
               <div className="mt-6 rounded-2xl border border-[#dce7de] bg-[#f2f7f3] p-4">
@@ -917,8 +962,8 @@ export default async function TodayPage() {
 
                   <div>
                     <p className="font-medium text-[#36523d]">
-                      Today&apos;s
-                      plan is complete.
+                      Today&apos;s plan
+                      is complete.
                     </p>
 
                     <p className="mt-1 text-sm leading-6 text-[#6c8772]">
@@ -987,7 +1032,7 @@ export default async function TodayPage() {
                                   "🎯"}
                             </div>
 
-                            {/* INFO */}
+                            {/* GOAL INFO */}
 
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
@@ -1063,8 +1108,7 @@ export default async function TodayPage() {
                                 href="/focus"
                                 className="block w-full rounded-xl border border-[#dce7de] bg-white px-4 py-2.5 text-center text-sm font-medium text-[#45634c] transition hover:bg-[#eef4ef]"
                               >
-                                Start
-                                Focus
+                                Start Focus
                               </Link>
                             )}
                           </div>
@@ -1299,11 +1343,7 @@ export default async function TodayPage() {
                     </span>
 
                     <span className="text-sm text-gray-500">
-                      day{" "}
-                      {currentStreak ===
-                      1
-                        ? "streak"
-                        : "streak"}
+                      day streak
                     </span>
                   </div>
 
@@ -1321,7 +1361,7 @@ export default async function TodayPage() {
               </div>
             </div>
 
-            {/* ACTIVITY STRIP */}
+            {/* 7 DAY STRIP */}
 
             <div className="w-full sm:w-auto">
               <p className="mb-3 text-xs font-medium text-gray-400 sm:text-right">
@@ -1361,6 +1401,186 @@ export default async function TodayPage() {
           </div>
         </section>
 
+        {/* ACTIVITY CALENDAR */}
+
+        <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">
+                Activity
+              </p>
+
+              <h2 className="mt-2 text-xl font-semibold">
+                Your Momentum
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Your consistency over
+                the last 12 weeks.
+              </p>
+            </div>
+
+            {/* SUMMARY */}
+
+            <div className="flex gap-8">
+              <div>
+                <p className="text-xl font-semibold text-gray-800">
+                  {
+                    totalActiveDays
+                  }
+                </p>
+
+                <p className="mt-0.5 text-xs text-gray-400">
+                  active days
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xl font-semibold text-gray-800">
+                  {
+                    totalActivities
+                  }
+                </p>
+
+                <p className="mt-0.5 text-xs text-gray-400">
+                  activities
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* CALENDAR */}
+
+          <div className="mt-8 overflow-x-auto pb-2">
+            <div className="w-fit min-w-max">
+
+              <div className="grid grid-cols-[36px_auto] gap-3">
+
+                {/* WEEKDAY LABELS */}
+
+                <div className="pt-[22px]">
+                  <div className="grid grid-rows-7 gap-1">
+                    {[
+                      "Mon",
+                      "",
+                      "Wed",
+                      "",
+                      "Fri",
+                      "",
+                      "Sun",
+                    ].map(
+                      (
+                        label,
+                        index
+                      ) => (
+                        <div
+                          key={
+                            index
+                          }
+                          className="flex h-3.5 items-center text-[10px] text-gray-400"
+                        >
+                          {
+                            label
+                          }
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {/* CALENDAR CONTENT */}
+
+                <div>
+
+                  {/* MONTH LABELS */}
+
+                  <ActivityMonthLabels
+                    weeks={
+                      activityCalendar
+                    }
+                  />
+
+                  {/* DAYS */}
+
+                  <div className="flex gap-1">
+                    {activityCalendar.map(
+                      (
+                        week,
+                        weekIndex
+                      ) => (
+                        <div
+                          key={
+                            weekIndex
+                          }
+                          className="grid shrink-0 grid-rows-7 gap-1"
+                        >
+                          {week.days.map(
+                            (day) => (
+                              <ActivityCalendarCell
+                                key={
+                                  day.dateKey
+                                }
+                                dateKey={
+                                  day.dateKey
+                                }
+                                count={
+                                  day.count
+                                }
+                                inRange={
+                                  day.inRange
+                                }
+                                todayDateKey={
+                                  todayDateKey
+                                }
+                              />
+                            )
+                          )}
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* LEGEND */}
+
+              <div className="mt-5 flex items-center justify-end gap-1.5 text-[10px] text-gray-400">
+                <span className="mr-1">
+                  Less
+                </span>
+
+                {[0, 1, 2, 3, 4].map(
+                  (level) => (
+                    <div
+                      key={
+                        level
+                      }
+                      className={
+                        getActivityCellClass(
+                          level
+                        )
+                      }
+                    />
+                  )
+                )}
+
+                <span className="ml-1">
+                  More
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-gray-100 pt-4">
+            <p className="text-xs leading-5 text-gray-400">
+              Focus sessions and
+              completed outputs both
+              contribute to your
+              activity history.
+            </p>
+          </div>
+        </section>
+
         {/* FOOTER */}
 
         <div className="mt-8 text-center">
@@ -1376,7 +1596,7 @@ export default async function TodayPage() {
 }
 
 /*
- * ACTIVITY DAY
+ * 7-DAY ACTIVITY ITEM
  */
 
 function ActivityDayItem({
@@ -1441,6 +1661,186 @@ function ActivityDayItem({
       </div>
     </div>
   );
+}
+
+/*
+ * ACTIVITY CALENDAR CELL
+ */
+
+function ActivityCalendarCell({
+  dateKey,
+  count,
+  inRange,
+  todayDateKey,
+}: {
+  dateKey: string;
+  count: number;
+  inRange: boolean;
+  todayDateKey: string;
+}) {
+  const level =
+    getActivityLevel(
+      count
+    );
+
+  const isToday =
+    dateKey ===
+    todayDateKey;
+
+  const date =
+    dateKeyToDisplayDate(
+      dateKey
+    );
+
+  const label =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      }
+    ).format(date);
+
+  /*
+   * FUTURE DATE
+   */
+
+  if (!inRange) {
+    return (
+      <div
+        title={`${label} · Future`}
+        className="h-3.5 w-3.5 shrink-0 rounded-[3px] bg-gray-50"
+      />
+    );
+  }
+
+  /*
+   * ACTIVITY DATE
+   */
+
+  return (
+    <div
+      title={`${label} · ${count} ${
+        count === 1
+          ? "activity"
+          : "activities"
+      }`}
+      className={`${getActivityCellClass(
+        level
+      )} ${
+        isToday
+          ? "ring-1 ring-[#45634c] ring-offset-1"
+          : ""
+      }`}
+    />
+  );
+}
+
+/*
+ * MONTH LABELS
+ */
+
+function ActivityMonthLabels({
+  weeks,
+}: {
+  weeks: {
+    days: {
+      dateKey: string;
+    }[];
+  }[];
+}) {
+  let previousMonth = "";
+
+  return (
+    <div className="mb-2 flex gap-1">
+      {weeks.map(
+        (
+          week,
+          index
+        ) => {
+          const firstDay =
+            week.days[0];
+
+          const date =
+            dateKeyToDisplayDate(
+              firstDay.dateKey
+            );
+
+          const month =
+            new Intl.DateTimeFormat(
+              "en-US",
+              {
+                month: "short",
+                timeZone:
+                  "UTC",
+              }
+            ).format(
+              date
+            );
+
+          const showMonth =
+            month !==
+            previousMonth;
+
+          previousMonth =
+            month;
+
+          return (
+            <div
+              key={
+                index
+              }
+              className="w-3.5 shrink-0 text-[9px] text-gray-400"
+            >
+              {showMonth
+                ? month
+                : ""}
+            </div>
+          );
+        }
+      )}
+    </div>
+  );
+}
+
+/*
+ * ACTIVITY INTENSITY
+ *
+ * Fixed width + height is important here.
+ *
+ * Do NOT use:
+ *
+ * aspect-square w-full
+ *
+ * because that allows the week columns to stretch and
+ * creates the oversized calendar we saw previously.
+ */
+
+function getActivityCellClass(
+  level: number
+): string {
+  const base =
+    "h-3.5 w-3.5 shrink-0 rounded-[3px] transition";
+
+  if (level === 1) {
+    return `${base} bg-[#dce8de]`;
+  }
+
+  if (level === 2) {
+    return `${base} bg-[#abc2af]`;
+  }
+
+  if (level === 3) {
+    return `${base} bg-[#78977e]`;
+  }
+
+  if (level >= 4) {
+    return `${base} bg-[#45634c]`;
+  }
+
+  return `${base} bg-gray-100`;
 }
 
 /*
@@ -1566,7 +1966,7 @@ function TodayStatus({
 }
 
 /*
- * WEEKLY GOAL LABEL
+ * WEEKLY TARGET LABEL
  */
 
 function formatGoalTarget(
@@ -1598,11 +1998,7 @@ function formatGoalTarget(
 }
 
 /*
- * YYYY-MM-DD -> UTC Date
- *
- * UTC is intentional here because we're only using the
- * Date object to display the calendar weekday/date from
- * an already-normalized local date key.
+ * YYYY-MM-DD -> UTC DATE
  */
 
 function dateKeyToDisplayDate(
