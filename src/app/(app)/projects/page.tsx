@@ -90,6 +90,7 @@ export default async function ProjectsPage() {
                                 {project.due_date ? `Due ${deadlineFormatter.format(new Date(`${project.due_date}T00:00:00Z`))}${overdue ? " · Overdue" : ""}` : "No deadline"}
                               </p>
                             </div>
+                            <Link href={`/projects/${project.id}/edit`} className="mt-5 inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">Edit Project<span className="sr-only">: {project.name}</span></Link>
                           </article>
                         );
                       })}
