@@ -127,11 +127,9 @@ const CUSTOM_ICONS = [
 const DURATION_OPTIONS = [15, 25, 30, 45, 60, 90];
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1);
   const router = useRouter();
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [step, setStep] = useState(1);
 
   const [goals, setGoals] = useState<Goal[]>(STARTER_GOALS);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
@@ -146,11 +144,11 @@ export default function OnboardingPage() {
   const [focusPreset, setFocusPreset] =
     useState<FocusPreset>("pomodoro");
 
-  const [customFocusMinutes, setCustomFocusMinutes] =
-    useState(50);
+  const [customFocusMinutes, setCustomFocusMinutes] = useState(50);
+  const [customBreakMinutes, setCustomBreakMinutes] = useState(10);
 
-  const [customBreakMinutes, setCustomBreakMinutes] =
-    useState(10);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const selectedGoals = goals.filter((goal) =>
     selectedGoalIds.includes(goal.id)
@@ -164,15 +162,10 @@ export default function OnboardingPage() {
     );
   }
 
-  function updateGoal(
-    goalId: string,
-    updates: Partial<Goal>
-  ) {
+  function updateGoal(goalId: string, updates: Partial<Goal>) {
     setGoals((current) =>
       current.map((goal) =>
-        goal.id === goalId
-          ? { ...goal, ...updates }
-          : goal
+        goal.id === goalId ? { ...goal, ...updates } : goal
       )
     );
   }
@@ -200,22 +193,17 @@ export default function OnboardingPage() {
     }
 
     if (trimmedName.length > 40) {
-      setCustomGoalError(
-        "Goal names can be up to 40 characters."
-      );
+      setCustomGoalError("Goal names can be up to 40 characters.");
       return;
     }
 
     const duplicateExists = goals.some(
       (goal) =>
-        goal.name.trim().toLowerCase() ===
-        trimmedName.toLowerCase()
+        goal.name.trim().toLowerCase() === trimmedName.toLowerCase()
     );
 
     if (duplicateExists) {
-      setCustomGoalError(
-        "A goal with this name already exists."
-      );
+      setCustomGoalError("A goal with this name already exists.");
       return;
     }
 
@@ -232,11 +220,7 @@ export default function OnboardingPage() {
     };
 
     setGoals((current) => [...current, newGoal]);
-
-    setSelectedGoalIds((current) => [
-      ...current,
-      newGoal.id,
-    ]);
+    setSelectedGoalIds((current) => [...current, newGoal.id]);
 
     closeCustomGoal();
   }
@@ -262,7 +246,7 @@ export default function OnboardingPage() {
   }
 
   function previousStep() {
-    if (step > 1) {
+    if (step > 1 && !isSubmitting) {
       setStep((current) => current - 1);
     }
   }
@@ -278,12 +262,23 @@ export default function OnboardingPage() {
     try {
       const supabase = createClient();
 
+      /*
+       * Verify that the browser still has a valid authenticated user.
+       */
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (userError) {
+        console.error("Supabase getUser error:", userError);
+
+        throw new Error(
+          userError.message || "Unable to verify your session."
+        );
+      }
+
+      if (!user) {
         throw new Error(
           "Your session has expired. Please sign in again."
         );
@@ -295,6 +290,18 @@ export default function OnboardingPage() {
         );
       }
 
+      /*
+       * Convert our React Goal objects into the JSON structure
+       * expected by complete_onboarding().
+       *
+       * We intentionally DO NOT send:
+       *
+       * - frontend goal ID
+       * - user ID
+       *
+       * PostgreSQL generates goal UUIDs and auth.uid() determines
+       * the authenticated user.
+       */
       const goalsPayload = selectedGoals.map((goal) => ({
         name: goal.name,
         description: goal.description ?? null,
@@ -305,7 +312,7 @@ export default function OnboardingPage() {
         scheduled_days: goal.scheduledDays,
       }));
 
-      const { error } = await supabase.rpc(
+      const { error: rpcError } = await supabase.rpc(
         "complete_onboarding",
         {
           p_goals: goalsPayload,
@@ -315,17 +322,33 @@ export default function OnboardingPage() {
         }
       );
 
-      if (error) {
-        throw error;
+      /*
+       * Supabase/PostgREST errors are not guaranteed to be native
+       * JavaScript Error instances.
+       *
+       * Convert the error into one so our UI can display the
+       * actual PostgreSQL/PostgREST message.
+       */
+      if (rpcError) {
+
+        const parts = [
+          rpcError.message,
+          rpcError.details,
+          rpcError.hint,
+        ].filter(Boolean);
+
+        throw new Error(
+          parts.join(" — ") || "Failed to save onboarding data."
+        );
       }
 
+      /*
+       * Only redirect after the database transaction succeeds.
+       */
       router.replace("/today");
       router.refresh();
     } catch (error) {
-      console.error(
-        "Failed to complete onboarding:",
-        error
-      );
+      console.error("Failed to complete onboarding:", error);
 
       const message =
         error instanceof Error
@@ -343,8 +366,6 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-[#f7f9f6] px-5 py-8 sm:px-8">
       <div className="mx-auto max-w-3xl">
-
-        {/* Header */}
         <header className="flex items-center justify-between">
           <div className="text-xl font-bold text-[#3f5f45]">
             Momentum
@@ -355,7 +376,6 @@ export default function OnboardingPage() {
           </div>
         </header>
 
-        {/* Progress */}
         <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-gray-200">
           <div
             className="h-full rounded-full bg-[#45634c] transition-all duration-300"
@@ -365,10 +385,8 @@ export default function OnboardingPage() {
           />
         </div>
 
-        {/* Content */}
         <section className="flex min-h-[65vh] items-center justify-center py-12">
           <div className="w-full">
-
             {step === 1 && <WelcomeStep />}
 
             {step === 2 && (
@@ -401,26 +419,19 @@ export default function OnboardingPage() {
                 focusPreset={focusPreset}
                 setFocusPreset={setFocusPreset}
                 customFocusMinutes={customFocusMinutes}
-                setCustomFocusMinutes={
-                  setCustomFocusMinutes
-                }
+                setCustomFocusMinutes={setCustomFocusMinutes}
                 customBreakMinutes={customBreakMinutes}
-                setCustomBreakMinutes={
-                  setCustomBreakMinutes
-                }
+                setCustomBreakMinutes={setCustomBreakMinutes}
               />
             )}
-
           </div>
         </section>
 
-        {/* Navigation */}
-        <footer className="flex items-center justify-between border-t border-gray-200 pt-6">
-
+        <footer className="flex items-end justify-between gap-4 border-t border-gray-200 pt-6">
           <button
             type="button"
             onClick={previousStep}
-            disabled={step === 1}
+            disabled={step === 1 || isSubmitting}
             className="rounded-xl px-5 py-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100 disabled:invisible"
           >
             ← Back
@@ -436,31 +447,35 @@ export default function OnboardingPage() {
               Continue →
             </button>
           ) : (
-            <div className="flex flex-col items-end gap-2">
-            {submitError && (
-                <p
-                role="alert"
-                className="max-w-sm text-right text-sm text-red-600"
+            <div className="flex flex-col items-end gap-3">
+              {submitError && (
+                <div
+                  role="alert"
+                  className="max-w-md rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700"
                 >
-                {submitError}
-                </p>
-            )}
+                  <p className="font-medium">
+                    We couldn&apos;t finish setup.
+                  </p>
 
-            <button
+                  <p className="mt-1 break-words">
+                    {submitError}
+                  </p>
+                </div>
+              )}
+
+              <button
                 type="button"
                 onClick={handleCompleteOnboarding}
                 disabled={isSubmitting}
-                className="min-w-[170px] rounded-xl bg-[#45634c] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
-            >
+                className="min-w-[190px] rounded-xl bg-[#45634c] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
+              >
                 {isSubmitting
-                ? "Setting up Momentum..."
-                : "Start Momentum →"}
-            </button>
+                  ? "Setting up Momentum..."
+                  : "Start Momentum →"}
+              </button>
             </div>
           )}
-
         </footer>
-
       </div>
 
       {customGoalOpen && (
@@ -474,7 +489,6 @@ export default function OnboardingPage() {
           add={addCustomGoal}
         />
       )}
-
     </main>
   );
 }
@@ -486,7 +500,6 @@ export default function OnboardingPage() {
 function WelcomeStep() {
   return (
     <div className="mx-auto max-w-xl text-center">
-
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e7eee8] text-3xl">
         🌱
       </div>
@@ -500,12 +513,11 @@ function WelcomeStep() {
       </h1>
 
       <p className="mx-auto mt-5 max-w-md text-base leading-7 text-gray-500">
-        Momentum helps you focus on what matters without
-        trying to do everything every day.
+        Momentum helps you focus on what matters without trying to do
+        everything every day.
       </p>
 
       <div className="mx-auto mt-10 grid max-w-lg gap-3 text-left sm:grid-cols-3">
-
         <WelcomeCard
           icon="🎯"
           title="Choose goals"
@@ -523,9 +535,7 @@ function WelcomeStep() {
           title="Stay consistent"
           description="Build momentum."
         />
-
       </div>
-
     </div>
   );
 }
@@ -541,10 +551,7 @@ function WelcomeCard({
 }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-
-      <div className="text-xl">
-        {icon}
-      </div>
+      <div className="text-xl">{icon}</div>
 
       <p className="mt-3 font-medium text-gray-900">
         {title}
@@ -553,7 +560,6 @@ function WelcomeCard({
       <p className="mt-1 text-sm text-gray-500">
         {description}
       </p>
-
     </div>
   );
 }
@@ -579,9 +585,7 @@ function GoalsStep({
 
   return (
     <div className="mx-auto max-w-2xl">
-
       <div className="text-center">
-
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#52735a]">
           Your Goals
         </p>
@@ -591,23 +595,17 @@ function GoalsStep({
         </h1>
 
         <p className="mt-4 text-gray-500">
-          Choose what matters right now. You can always
-          change these later.
+          Choose what matters right now. You can always change these
+          later.
         </p>
-
       </div>
 
       <div className="mt-10 grid gap-3 sm:grid-cols-2">
-
         {goals.map((goal) => {
-          const selected =
-            selectedGoalIds.includes(goal.id);
+          const selected = selectedGoalIds.includes(goal.id);
 
           return (
-            <div
-              key={goal.id}
-              className="relative"
-            >
+            <div key={goal.id} className="relative">
               <button
                 type="button"
                 onClick={() => toggleGoal(goal.id)}
@@ -618,7 +616,6 @@ function GoalsStep({
                     : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
-
                 {selected && (
                   <div className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-[#45634c] text-xs text-white">
                     ✓
@@ -636,7 +633,6 @@ function GoalsStep({
                 <p className="mt-1 pr-6 text-sm leading-6 text-gray-500">
                   {goal.description}
                 </p>
-
               </button>
 
               {goal.isCustom && (
@@ -652,11 +648,9 @@ function GoalsStep({
                   Delete
                 </button>
               )}
-
             </div>
           );
         })}
-
       </div>
 
       <button
@@ -671,12 +665,9 @@ function GoalsStep({
         {selectedCount === 0
           ? "Select at least one goal to continue."
           : `${selectedCount} ${
-              selectedCount === 1
-                ? "goal"
-                : "goals"
+              selectedCount === 1 ? "goal" : "goals"
             } selected`}
       </p>
-
     </div>
   );
 }
@@ -690,16 +681,11 @@ function WeeklyTargetsStep({
   updateGoal,
 }: {
   goals: Goal[];
-  updateGoal: (
-    goalId: string,
-    updates: Partial<Goal>
-  ) => void;
+  updateGoal: (goalId: string, updates: Partial<Goal>) => void;
 }) {
   return (
     <div className="mx-auto max-w-2xl">
-
       <div className="text-center">
-
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#52735a]">
           Weekly Targets
         </p>
@@ -709,14 +695,12 @@ function WeeklyTargetsStep({
         </h1>
 
         <p className="mx-auto mt-4 max-w-lg text-gray-500">
-          Set realistic weekly targets. Momentum is about
-          consistency, not filling every hour of your week.
+          Set realistic weekly targets. Momentum is about consistency,
+          not filling every hour of your week.
         </p>
-
       </div>
 
       <div className="mt-10 space-y-4">
-
         {goals.map((goal) => (
           <GoalTargetCard
             key={goal.id}
@@ -724,14 +708,12 @@ function WeeklyTargetsStep({
             updateGoal={updateGoal}
           />
         ))}
-
       </div>
 
       <div className="mt-6 rounded-2xl bg-[#eef4ef] p-4 text-sm leading-6 text-[#45634c]">
-        🌱 Start with targets you can sustain. You can always
-        increase them later.
+        🌱 Start with targets you can sustain. You can always increase
+        them later.
       </div>
-
     </div>
   );
 }
@@ -741,10 +723,7 @@ function GoalTargetCard({
   updateGoal,
 }: {
   goal: Goal;
-  updateGoal: (
-    goalId: string,
-    updates: Partial<Goal>
-  ) => void;
+  updateGoal: (goalId: string, updates: Partial<Goal>) => void;
 }) {
   function changeMeasurement(
     measurementType: MeasurementType
@@ -771,14 +750,10 @@ function GoalTargetCard({
 
   function decrementTarget() {
     const amount =
-      goal.measurementType === "minutes"
-        ? 15
-        : 1;
+      goal.measurementType === "minutes" ? 15 : 1;
 
     const minimum =
-      goal.measurementType === "minutes"
-        ? 15
-        : 1;
+      goal.measurementType === "minutes" ? 15 : 1;
 
     updateGoal(goal.id, {
       weeklyTarget: Math.max(
@@ -790,13 +765,10 @@ function GoalTargetCard({
 
   function incrementTarget() {
     const amount =
-      goal.measurementType === "minutes"
-        ? 15
-        : 1;
+      goal.measurementType === "minutes" ? 15 : 1;
 
     updateGoal(goal.id, {
-      weeklyTarget:
-        goal.weeklyTarget + amount,
+      weeklyTarget: goal.weeklyTarget + amount,
     });
   }
 
@@ -813,15 +785,12 @@ function GoalTargetCard({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-
       <div className="flex items-center gap-3">
-
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f2f5f2] text-xl">
           {goal.icon}
         </div>
 
         <div>
-
           <h2 className="font-semibold text-gray-900">
             {goal.name}
           </h2>
@@ -829,15 +798,11 @@ function GoalTargetCard({
           <p className="text-sm text-gray-500">
             Weekly progress target
           </p>
-
         </div>
-
       </div>
 
       <div className="mt-6 grid gap-6 sm:grid-cols-2">
-
         <div>
-
           <label
             htmlFor={`measurement-${goal.id}`}
             className="block text-sm font-medium text-gray-700"
@@ -850,8 +815,7 @@ function GoalTargetCard({
             value={goal.measurementType}
             onChange={(event) =>
               changeMeasurement(
-                event.target
-                  .value as MeasurementType
+                event.target.value as MeasurementType
               )
             }
             className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
@@ -868,17 +832,14 @@ function GoalTargetCard({
               Count
             </option>
           </select>
-
         </div>
 
         <div>
-
           <p className="block text-sm font-medium text-gray-700">
             Weekly target
           </p>
 
           <div className="mt-2 flex min-h-[50px] items-center justify-between rounded-xl border border-gray-300 px-2">
-
             <button
               type="button"
               onClick={decrementTarget}
@@ -888,7 +849,6 @@ function GoalTargetCard({
             </button>
 
             <div className="min-w-0 px-2 text-center">
-
               <span className="font-semibold text-gray-900">
                 {goal.weeklyTarget}
               </span>
@@ -896,7 +856,6 @@ function GoalTargetCard({
               <span className="ml-1 text-sm text-gray-500">
                 {targetUnit}
               </span>
-
             </div>
 
             <button
@@ -906,21 +865,16 @@ function GoalTargetCard({
             >
               +
             </button>
-
           </div>
-
         </div>
-
       </div>
 
       <div className="mt-6">
-
         <p className="text-sm font-medium text-gray-700">
           Typical focus session
         </p>
 
         <div className="mt-3 flex flex-wrap gap-2">
-
           {DURATION_OPTIONS.map((duration) => {
             const selected =
               goal.defaultDuration === duration;
@@ -945,11 +899,8 @@ function GoalTargetCard({
               </button>
             );
           })}
-
         </div>
-
       </div>
-
     </div>
   );
 }
@@ -963,16 +914,11 @@ function WeeklyRoutineStep({
   updateGoal,
 }: {
   goals: Goal[];
-  updateGoal: (
-    goalId: string,
-    updates: Partial<Goal>
-  ) => void;
+  updateGoal: (goalId: string, updates: Partial<Goal>) => void;
 }) {
   return (
     <div className="mx-auto max-w-2xl">
-
       <div className="text-center">
-
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#52735a]">
           Your Routine
         </p>
@@ -982,15 +928,12 @@ function WeeklyRoutineStep({
         </h1>
 
         <p className="mx-auto mt-4 max-w-lg leading-7 text-gray-500">
-          Choose the days you&apos;d usually like to work
-          on each goal. This is a flexible routine, not a
-          strict calendar.
+          Choose the days you&apos;d usually like to work on each goal.
+          This is a flexible routine, not a strict calendar.
         </p>
-
       </div>
 
       <div className="mt-10 space-y-4">
-
         {goals.map((goal) => (
           <RoutineCard
             key={goal.id}
@@ -998,15 +941,12 @@ function WeeklyRoutineStep({
             updateGoal={updateGoal}
           />
         ))}
-
       </div>
 
       <div className="mt-6 rounded-2xl bg-[#eef4ef] p-4 text-sm leading-6 text-[#45634c]">
-        🌿 Plans change. Missing a planned day won&apos;t
-        lock you out of progress — Momentum will help you
-        adjust.
+        🌿 Plans change. Missing a planned day won&apos;t lock you out
+        of progress — Momentum will help you adjust.
       </div>
-
     </div>
   );
 }
@@ -1016,22 +956,14 @@ function RoutineCard({
   updateGoal,
 }: {
   goal: Goal;
-  updateGoal: (
-    goalId: string,
-    updates: Partial<Goal>
-  ) => void;
+  updateGoal: (goalId: string, updates: Partial<Goal>) => void;
 }) {
   function toggleDay(day: number) {
-    const exists =
-      goal.scheduledDays.includes(day);
+    const exists = goal.scheduledDays.includes(day);
 
     const updatedDays = exists
-      ? goal.scheduledDays.filter(
-          (item) => item !== day
-        )
-      : [...goal.scheduledDays, day].sort(
-          (a, b) => a - b
-        );
+      ? goal.scheduledDays.filter((item) => item !== day)
+      : [...goal.scheduledDays, day].sort((a, b) => a - b);
 
     updateGoal(goal.id, {
       scheduledDays: updatedDays,
@@ -1056,17 +988,13 @@ function RoutineCard({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-
       <div className="flex items-start justify-between gap-4">
-
         <div className="flex items-center gap-3">
-
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f2f5f2] text-xl">
             {goal.icon}
           </div>
 
           <div>
-
             <h2 className="font-semibold text-gray-900">
               {goal.name}
             </h2>
@@ -1074,38 +1002,29 @@ function RoutineCard({
             <p className="mt-0.5 text-sm text-gray-500">
               {formatGoalTarget(goal)}
             </p>
-
           </div>
-
         </div>
 
         <span className="shrink-0 rounded-full bg-[#f2f5f2] px-3 py-1 text-xs font-medium text-[#52735a]">
           {goal.defaultDuration}m
         </span>
-
       </div>
 
       <div className="mt-6">
-
         <p className="text-sm font-medium text-gray-700">
           Preferred days
         </p>
 
         <div className="mt-3 grid grid-cols-7 gap-2">
-
           {DAYS.map((day) => {
             const selected =
-              goal.scheduledDays.includes(
-                day.value
-              );
+              goal.scheduledDays.includes(day.value);
 
             return (
               <button
                 key={day.value}
                 type="button"
-                onClick={() =>
-                  toggleDay(day.value)
-                }
+                onClick={() => toggleDay(day.value)}
                 aria-pressed={selected}
                 title={day.label}
                 className={`flex aspect-square min-h-10 items-center justify-center rounded-xl border text-sm font-semibold transition ${
@@ -1118,11 +1037,9 @@ function RoutineCard({
               </button>
             );
           })}
-
         </div>
 
         <div className="mt-3 flex min-h-6 items-center justify-between gap-4">
-
           <p className="text-sm text-gray-500">
             {selectedLabels.length === 0
               ? "No preferred days selected."
@@ -1131,17 +1048,12 @@ function RoutineCard({
 
           <p className="shrink-0 text-xs text-gray-400">
             {goal.scheduledDays.length}{" "}
-            {goal.scheduledDays.length === 1
-              ? "day"
-              : "days"}
+            {goal.scheduledDays.length === 1 ? "day" : "days"}
           </p>
-
         </div>
-
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
-
         <button
           type="button"
           onClick={spreadEvenly}
@@ -1153,16 +1065,12 @@ function RoutineCard({
         <button
           type="button"
           onClick={clearDays}
-          disabled={
-            goal.scheduledDays.length === 0
-          }
+          disabled={goal.scheduledDays.length === 0}
           className="rounded-lg px-3 py-2 text-xs font-medium text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Clear days
         </button>
-
       </div>
-
     </div>
   );
 }
@@ -1204,9 +1112,7 @@ function FocusSetupStep({
 
   return (
     <div className="mx-auto max-w-2xl">
-
       <div className="text-center">
-
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#52735a]">
           Focus Setup
         </p>
@@ -1216,24 +1122,19 @@ function FocusSetupStep({
         </h1>
 
         <p className="mx-auto mt-4 max-w-lg leading-7 text-gray-500">
-          Choose a default focus style. You&apos;ll still be
-          able to change the timer whenever you start a session.
+          Choose a default focus style. You&apos;ll still be able to
+          change the timer whenever you start a session.
         </p>
-
       </div>
 
-      {/* Presets */}
       <div className="mt-10 grid gap-3 sm:grid-cols-3">
-
         <FocusPresetCard
           selected={focusPreset === "pomodoro"}
           icon="🍅"
           title="Pomodoro"
           description="25 min focus"
           secondary="5 min break"
-          onClick={() =>
-            setFocusPreset("pomodoro")
-          }
+          onClick={() => setFocusPreset("pomodoro")}
         />
 
         <FocusPresetCard
@@ -1242,9 +1143,7 @@ function FocusSetupStep({
           title="Deep Focus"
           description="45 min focus"
           secondary="10 min break"
-          onClick={() =>
-            setFocusPreset("deep")
-          }
+          onClick={() => setFocusPreset("deep")}
         />
 
         <FocusPresetCard
@@ -1253,17 +1152,12 @@ function FocusSetupStep({
           title="Custom"
           description="Your rhythm"
           secondary="Choose durations"
-          onClick={() =>
-            setFocusPreset("custom")
-          }
+          onClick={() => setFocusPreset("custom")}
         />
-
       </div>
 
-      {/* Custom timer */}
       {focusPreset === "custom" && (
         <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-
           <h2 className="font-semibold text-gray-900">
             Custom timer
           </h2>
@@ -1273,7 +1167,6 @@ function FocusSetupStep({
           </p>
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
-
             <NumberSetting
               label="Focus"
               value={customFocusMinutes}
@@ -1293,21 +1186,16 @@ function FocusSetupStep({
               step={5}
               setValue={setCustomBreakMinutes}
             />
-
           </div>
-
         </div>
       )}
 
-      {/* Timer preview */}
       <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-7 text-center">
-
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
           Your default rhythm
         </p>
 
         <div className="mt-5 flex items-center justify-center gap-6">
-
           <div>
             <p className="text-4xl font-semibold tracking-tight text-[#45634c]">
               {focusMinutes}
@@ -1329,16 +1217,11 @@ function FocusSetupStep({
               break minutes
             </p>
           </div>
-
         </div>
-
       </div>
 
-      {/* Summary */}
       <div className="mt-6 rounded-3xl bg-[#eef4ef] p-6">
-
         <div className="flex items-center gap-3">
-
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-xl">
             🌱
           </div>
@@ -1352,24 +1235,16 @@ function FocusSetupStep({
               Here&apos;s what you&apos;ve set up.
             </p>
           </div>
-
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-
           <SummaryStat
             value={goals.length.toString()}
-            label={
-              goals.length === 1
-                ? "active goal"
-                : "active goals"
-            }
+            label={goals.length === 1 ? "active goal" : "active goals"}
           />
 
           <SummaryStat
-            value={countScheduledDays(
-              goals
-            ).toString()}
+            value={countScheduledDays(goals).toString()}
             label="planned goal-days"
           />
 
@@ -1377,17 +1252,14 @@ function FocusSetupStep({
             value={`${focusMinutes}/${breakMinutes}`}
             label="focus rhythm"
           />
-
         </div>
 
         <div className="mt-5 border-t border-[#dce7de] pt-5">
-
           <p className="text-xs font-medium uppercase tracking-[0.15em] text-[#6c8772]">
             Your goals
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
-
             {goals.map((goal) => (
               <span
                 key={goal.id}
@@ -1396,18 +1268,14 @@ function FocusSetupStep({
                 {goal.icon} {goal.name}
               </span>
             ))}
-
           </div>
-
         </div>
-
       </div>
 
       <p className="mt-6 text-center text-sm text-gray-400">
-        Nothing here is permanent. Momentum should adapt as
-        your priorities change.
+        Nothing here is permanent. Momentum should adapt as your
+        priorities change.
       </p>
-
     </div>
   );
 }
@@ -1438,7 +1306,6 @@ function FocusPresetCard({
           : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
       }`}
     >
-
       {selected && (
         <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[#45634c] text-xs text-white">
           ✓
@@ -1460,7 +1327,6 @@ function FocusPresetCard({
       <p className="mt-1 text-xs text-gray-400">
         {secondary}
       </p>
-
     </button>
   );
 }
@@ -1483,32 +1349,20 @@ function NumberSetting({
   setValue: (value: number) => void;
 }) {
   function decrease() {
-    setValue(
-      Math.max(
-        minimum,
-        value - step
-      )
-    );
+    setValue(Math.max(minimum, value - step));
   }
 
   function increase() {
-    setValue(
-      Math.min(
-        maximum,
-        value + step
-      )
-    );
+    setValue(Math.min(maximum, value + step));
   }
 
   return (
     <div>
-
       <p className="text-sm font-medium text-gray-700">
         {label}
       </p>
 
       <div className="mt-2 flex min-h-[52px] items-center justify-between rounded-xl border border-gray-300 px-2">
-
         <button
           type="button"
           onClick={decrease}
@@ -1519,7 +1373,6 @@ function NumberSetting({
         </button>
 
         <div className="text-center">
-
           <span className="font-semibold text-gray-900">
             {value}
           </span>
@@ -1527,7 +1380,6 @@ function NumberSetting({
           <span className="ml-1 text-sm text-gray-500">
             {unit}
           </span>
-
         </div>
 
         <button
@@ -1538,9 +1390,7 @@ function NumberSetting({
         >
           +
         </button>
-
       </div>
-
     </div>
   );
 }
@@ -1554,7 +1404,6 @@ function SummaryStat({
 }) {
   return (
     <div className="rounded-2xl bg-white p-4">
-
       <p className="text-xl font-semibold text-[#45634c]">
         {value}
       </p>
@@ -1562,7 +1411,6 @@ function SummaryStat({
       <p className="mt-1 text-xs text-gray-500">
         {label}
       </p>
-
     </div>
   );
 }
@@ -1571,22 +1419,14 @@ function SummaryStat({
    HELPERS
 ========================================================= */
 
-function getSuggestedDays(
-  goal: Goal
-): number[] {
+function getSuggestedDays(goal: Goal): number[] {
   let numberOfDays: number;
 
   if (goal.measurementType === "sessions") {
-    numberOfDays = Math.min(
-      goal.weeklyTarget,
-      7
-    );
-  } else if (
-    goal.measurementType === "minutes"
-  ) {
+    numberOfDays = Math.min(goal.weeklyTarget, 7);
+  } else if (goal.measurementType === "minutes") {
     numberOfDays = Math.ceil(
-      goal.weeklyTarget /
-        goal.defaultDuration
+      goal.weeklyTarget / goal.defaultDuration
     );
 
     numberOfDays = Math.min(
@@ -1595,20 +1435,12 @@ function getSuggestedDays(
     );
   } else {
     numberOfDays = Math.min(
-      Math.max(
-        Math.ceil(
-          goal.weeklyTarget / 2
-        ),
-        1
-      ),
+      Math.max(Math.ceil(goal.weeklyTarget / 2), 1),
       7
     );
   }
 
-  const patterns: Record<
-    number,
-    number[]
-  > = {
+  const patterns: Record<number, number[]> = {
     1: [6],
     2: [2, 6],
     3: [1, 3, 6],
@@ -1621,39 +1453,25 @@ function getSuggestedDays(
   return patterns[numberOfDays];
 }
 
-function formatGoalTarget(
-  goal: Goal
-) {
-  if (
-    goal.measurementType === "sessions"
-  ) {
+function formatGoalTarget(goal: Goal) {
+  if (goal.measurementType === "sessions") {
     return `${goal.weeklyTarget} ${
-      goal.weeklyTarget === 1
-        ? "session"
-        : "sessions"
+      goal.weeklyTarget === 1 ? "session" : "sessions"
     } / week`;
   }
 
-  if (
-    goal.measurementType === "minutes"
-  ) {
+  if (goal.measurementType === "minutes") {
     return `${goal.weeklyTarget} minutes / week`;
   }
 
   return `${goal.weeklyTarget} ${
-    goal.weeklyTarget === 1
-      ? "item"
-      : "items"
+    goal.weeklyTarget === 1 ? "item" : "items"
   } / week`;
 }
 
-function countScheduledDays(
-  goals: Goal[]
-) {
+function countScheduledDays(goals: Goal[]) {
   return goals.reduce(
-    (total, goal) =>
-      total +
-      goal.scheduledDays.length,
+    (total, goal) => total + goal.scheduledDays.length,
     0
   );
 }
@@ -1683,21 +1501,14 @@ function CustomGoalModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm"
       onMouseDown={(event) => {
-        if (
-          event.target ===
-          event.currentTarget
-        ) {
+        if (event.target === event.currentTarget) {
           close();
         }
       }}
     >
-
       <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-6 shadow-xl sm:p-7">
-
         <div className="flex items-start justify-between">
-
           <div>
-
             <p className="text-sm font-medium text-[#52735a]">
               Custom Goal
             </p>
@@ -1705,7 +1516,6 @@ function CustomGoalModal({
             <h2 className="mt-1 text-2xl font-semibold text-gray-900">
               Create your own goal
             </h2>
-
           </div>
 
           <button
@@ -1716,11 +1526,9 @@ function CustomGoalModal({
           >
             ×
           </button>
-
         </div>
 
         <div className="mt-7">
-
           <label
             htmlFor="custom-goal-name"
             className="block text-sm font-medium text-gray-700"
@@ -1735,13 +1543,9 @@ function CustomGoalModal({
             maxLength={40}
             autoFocus
             placeholder="e.g. Practice Guitar"
-            onChange={(event) =>
-              setName(event.target.value)
-            }
+            onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
-              if (
-                event.key === "Enter"
-              ) {
+              if (event.key === "Enter") {
                 add();
               }
             }}
@@ -1749,7 +1553,6 @@ function CustomGoalModal({
           />
 
           <div className="mt-2 flex justify-between gap-4">
-
             <div>
               {error && (
                 <p className="text-sm text-red-600">
@@ -1761,52 +1564,38 @@ function CustomGoalModal({
             <p className="shrink-0 text-xs text-gray-400">
               {name.length}/40
             </p>
-
           </div>
-
         </div>
 
         <div className="mt-6">
-
           <p className="text-sm font-medium text-gray-700">
             Choose an icon
           </p>
 
           <div className="mt-3 grid grid-cols-5 gap-2">
+            {CUSTOM_ICONS.map((item) => {
+              const selected = item === icon;
 
-            {CUSTOM_ICONS.map(
-              (item) => {
-                const selected =
-                  item === icon;
-
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() =>
-                      setIcon(item)
-                    }
-                    aria-pressed={
-                      selected
-                    }
-                    className={`flex aspect-square items-center justify-center rounded-xl border text-xl transition ${
-                      selected
-                        ? "border-[#45634c] bg-[#eef4ef] ring-1 ring-[#45634c]"
-                        : "border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                );
-              }
-            )}
-
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setIcon(item)}
+                  aria-pressed={selected}
+                  className={`flex aspect-square items-center justify-center rounded-xl border text-xl transition ${
+                    selected
+                      ? "border-[#45634c] bg-[#eef4ef] ring-1 ring-[#45634c]"
+                      : "border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {item}
+                </button>
+              );
+            })}
           </div>
-
         </div>
 
         <div className="mt-8 flex justify-end gap-3">
-
           <button
             type="button"
             onClick={close}
@@ -1822,11 +1611,8 @@ function CustomGoalModal({
           >
             Add goal
           </button>
-
         </div>
-
       </div>
-
     </div>
   );
 }
