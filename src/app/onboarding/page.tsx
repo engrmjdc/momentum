@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const TOTAL_STEPS = 5;
 
@@ -126,6 +128,10 @@ const DURATION_OPTIONS = [15, 25, 30, 45, 60, 90];
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
+  const router = useRouter();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [goals, setGoals] = useState<Goal[]>(STARTER_GOALS);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
@@ -261,6 +267,76 @@ export default function OnboardingPage() {
     }
   }
 
+  async function handleCompleteOnboarding() {
+    if (isSubmitting) {
+      return;
+    }
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      const supabase = createClient();
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error(
+          "Your session has expired. Please sign in again."
+        );
+      }
+
+      if (selectedGoals.length === 0) {
+        throw new Error(
+          "Choose at least one goal before completing onboarding."
+        );
+      }
+
+      const goalsPayload = selectedGoals.map((goal) => ({
+        name: goal.name,
+        description: goal.description ?? null,
+        icon: goal.icon,
+        measurement_type: goal.measurementType,
+        weekly_target: goal.weeklyTarget,
+        default_duration_minutes: goal.defaultDuration,
+        scheduled_days: goal.scheduledDays,
+      }));
+
+      const { error } = await supabase.rpc(
+        "complete_onboarding",
+        {
+          p_goals: goalsPayload,
+          p_focus_preset: focusPreset,
+          p_custom_focus_minutes: customFocusMinutes,
+          p_custom_break_minutes: customBreakMinutes,
+        }
+      );
+
+      if (error) {
+        throw error;
+      }
+
+      router.replace("/today");
+      router.refresh();
+    } catch (error) {
+      console.error(
+        "Failed to complete onboarding:",
+        error
+      );
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while setting up Momentum.";
+
+      setSubmitError(message);
+      setIsSubmitting(false);
+    }
+  }
+
   const continueDisabled =
     step === 2 && selectedGoals.length === 0;
 
@@ -360,12 +436,27 @@ export default function OnboardingPage() {
               Continue →
             </button>
           ) : (
+            <div className="flex flex-col items-end gap-2">
+            {submitError && (
+                <p
+                role="alert"
+                className="max-w-sm text-right text-sm text-red-600"
+                >
+                {submitError}
+                </p>
+            )}
+
             <button
-              type="button"
-              className="rounded-xl bg-[#45634c] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#395440]"
+                type="button"
+                onClick={handleCompleteOnboarding}
+                disabled={isSubmitting}
+                className="min-w-[170px] rounded-xl bg-[#45634c] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Start Momentum →
+                {isSubmitting
+                ? "Setting up Momentum..."
+                : "Start Momentum →"}
             </button>
+            </div>
           )}
 
         </footer>

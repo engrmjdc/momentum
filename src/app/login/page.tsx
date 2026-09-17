@@ -1,84 +1,106 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import Link from "next/link";
+import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const checkEmail = searchParams.get("message") === "check-email";
+  const message = searchParams.get("message");
 
-  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (loading) {
+      return;
+    }
 
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
 
-    if (error) {
-      setError(error.message);
+      const { error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+      if (signInError) {
+        throw signInError;
+      }
+
+      router.replace("/onboarding");
+      router.refresh();
+    } catch (error) {
+      console.error("Login failed:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to sign in.";
+
+      setError(message);
       setLoading(false);
-      return;
     }
-
-    router.push("/onboarding");
-    router.refresh();
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f9f6] px-6 py-12">
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f9f6] px-5 py-10">
       <div className="w-full max-w-md">
-
-        <div className="mb-10 text-center">
-          <div className="mb-4 text-3xl font-bold text-[#3f5f45]">
+        <div className="text-center">
+          <div className="text-xl font-bold text-[#3f5f45]">
             Momentum
           </div>
 
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+          <h1 className="mt-8 text-3xl font-semibold tracking-tight text-gray-900">
             Welcome back.
           </h1>
 
-          <p className="mt-3 text-gray-500">
-            Continue where you left off.
+          <p className="mt-2 text-sm text-gray-500">
+            Continue building momentum toward what matters.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm">
-
-          {checkEmail && (
-            <div className="mb-6 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
-              Account created. Check your email to confirm your account before
-              logging in.
+        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          {message === "check-email" && (
+            <div className="mb-5 rounded-xl bg-[#eef4ef] p-4 text-sm leading-6 text-[#45634c]">
+              Check your email to confirm your account, then sign in.
             </div>
           )}
 
-          <h2 className="text-xl font-semibold text-gray-900">
-            Log in
-          </h2>
+          {error && (
+            <div
+              role="alert"
+              className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-600"
+            >
+              {error}
+            </div>
+          )}
 
-          <p className="mt-1 text-sm text-gray-500">
-            Enter your details to continue.
-          </p>
-
-          <form onSubmit={handleLogin} className="mt-7 space-y-5">
-
+          <form onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="email"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700"
               >
                 Email
               </label>
@@ -91,14 +113,14 @@ export default function LoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
-            <div>
+            <div className="mt-5">
               <label
                 htmlFor="password"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700"
               >
                 Password
               </label>
@@ -110,44 +132,41 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Your password"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                placeholder="Enter your password"
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
-
-            {error && (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#45634c] px-4 py-3 font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-7 w-full rounded-xl bg-[#45634c] px-5 py-3 font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Logging in..." : "Log in"}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
-
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500">
-            New to Momentum?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/signup"
               className="font-medium text-[#45634c] hover:underline"
             >
-              Create an account
+              Create one
             </Link>
           </p>
-
         </div>
-
-        <p className="mt-8 text-center text-sm text-gray-400">
-          Focus today. A better tomorrow.
-        </p>
-
       </div>
+    </main>
+  );
+}
+
+function LoginLoading() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f9f6]">
+      <p className="text-sm text-gray-500">
+        Loading...
+      </p>
     </main>
   );
 }
