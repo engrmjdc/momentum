@@ -11,6 +11,7 @@ type Project = {
   status: "active" | "completed" | "archived";
   due_date: string | null;
   goal_id: string | null;
+  project_tasks: { id: string; is_completed: boolean }[];
 };
 
 export default async function ProjectsPage() {
@@ -20,7 +21,7 @@ export default async function ProjectsPage() {
 
   const [projectsResult, goalsResult, profileResult] = await Promise.all([
     supabase.from("projects")
-      .select("id, name, description, status, due_date, goal_id")
+      .select("id, name, description, status, due_date, goal_id, project_tasks (id, is_completed)")
       .eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("goals").select("id, name, is_active").eq("user_id", user.id),
     supabase.from("profiles").select("timezone").eq("id", user.id).single(),
@@ -81,6 +82,9 @@ export default async function ProjectsPage() {
                       {items.map((project) => {
                         const goal = project.goal_id ? goals.get(project.goal_id) : null;
                         const overdue = project.status === "active" && project.due_date && project.due_date < today;
+                        const tasks = project.project_tasks ?? [];
+                        const completed = tasks.filter((task) => task.is_completed).length;
+                        const percentage = tasks.length ? Math.round(completed / tasks.length * 100) : 0;
                         return (
                           <article key={project.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                             <h3 className="break-words text-lg font-semibold">{project.name}</h3>
@@ -90,6 +94,13 @@ export default async function ProjectsPage() {
                               <p className={overdue ? "text-amber-700" : "text-gray-500"}>
                                 {project.due_date ? `Due ${deadlineFormatter.format(new Date(`${project.due_date}T00:00:00Z`))}${overdue ? " · Overdue" : ""}` : "No deadline"}
                               </p>
+                            </div>
+                            <div className="mt-5">
+                              <p className="text-sm text-gray-600">{completed} / {tasks.length} tasks completed · {percentage}%</p>
+                              <div role="progressbar" aria-label={`${project.name} task progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+                                <div className="h-full rounded-full bg-[#6c8772]" style={{ width: `${percentage}%` }} />
+                              </div>
+                              <Link href={`/projects/${project.id}`} className="mt-4 inline-flex rounded-xl bg-[#45634c] px-4 py-2 text-sm font-medium text-white hover:bg-[#354e3b]">View Tasks<span className="sr-only">: {project.name}</span></Link>
                             </div>
                             <Link href={`/projects/${project.id}/edit`} className="mt-5 inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">Edit Project<span className="sr-only">: {project.name}</span></Link>
                             <ProjectStatusActions key={`${project.id}-${project.status}`} projectId={project.id} projectName={project.name} status={project.status} />
