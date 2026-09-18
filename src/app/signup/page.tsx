@@ -96,7 +96,7 @@ export default function SignupPage() {
                 required
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Mac"
+                placeholder="Enter your name"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
@@ -174,6 +174,7 @@ export default function SignupPage() {
             </button>
           </form>
 
+          <p className="mt-5 text-center text-xs leading-5 text-gray-500">Read how Momentum handles your data in our <Link href="/privacy" className="font-medium text-[#45634c] underline">privacy notice</Link>.</p>
           <p className="mt-6 text-center text-sm text-gray-500">
             Already have an account?{" "}
             <Link

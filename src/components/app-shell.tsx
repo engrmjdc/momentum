@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BetaWelcome from "./beta-welcome";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -306,6 +307,7 @@ export default function AppShell({
       {/* PAGE CONTENT */}
 
       <div className="lg:pl-64">
+        <BetaWelcome />
         {children}
       </div>
     </div>
