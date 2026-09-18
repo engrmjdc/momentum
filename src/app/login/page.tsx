@@ -145,6 +145,7 @@ function LoginForm() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+          <Link href="/forgot-password" className="mt-4 inline-block text-sm font-medium text-[#45634c] hover:underline">Forgot password?</Link>
 
           <p className="mt-6 text-center text-sm text-gray-500">
             Don&apos;t have an account?{" "}

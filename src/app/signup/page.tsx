@@ -12,6 +12,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,12 @@ export default function SignupPage() {
   async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (loading) return;
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please retype your password.");
+      return;
+    }
     setLoading(true);
 
     const { data, error } = await supabase.auth.signUp({
@@ -136,8 +142,25 @@ export default function SignupPage() {
               />
             </div>
 
+            <div>
+              <label htmlFor="confirm-password" className="mb-2 block text-sm font-medium text-gray-700">
+                Confirm password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Retype your password"
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+              />
+            </div>
+
             {error && (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
               </div>
             )}
