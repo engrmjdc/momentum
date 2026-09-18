@@ -874,12 +874,12 @@ export default async function TodayPage() {
    */
 
   return (
-    <main className="min-h-screen bg-[#f7f9f6] text-gray-900">
+    <main className="min-h-screen bg-[#f5f6ef] text-[#233b2c]">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
 
         {/* HEADER */}
 
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <header className="flex flex-col gap-5 relative overflow-hidden rounded-3xl border border-[#dce5d3] bg-[#eaf0df] p-6 sm:flex sm:flex-row sm:items-end sm:justify-between sm:gap-5 sm:p-8">
           <div>
             <p className="text-sm font-medium text-[#6c8772]">
               {formattedDate}
@@ -913,11 +913,11 @@ export default async function TodayPage() {
 
         {/* TOP GRID */}
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
 
           {/* TODAY'S PLAN */}
 
-          <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+          <section className="rounded-3xl border border-[#dfe6d9] bg-white p-5 shadow-[0_8px_30px_-18px_#294d3b35] sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">
@@ -946,7 +946,7 @@ export default async function TodayPage() {
             {allTodayCompleted && (
               <div className="mt-6 rounded-2xl border border-[#dce7de] bg-[#f2f7f3] p-4">
                 <div className="flex gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#45634c] text-sm font-bold text-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#294d3b] text-sm font-bold text-white">
                     ✓
                   </div>
 
@@ -1001,7 +1001,7 @@ export default async function TodayPage() {
                         className={`rounded-2xl border p-4 transition ${
                           todayProgress.completed
                             ? "border-[#dce7de] bg-[#f5f9f5]"
-                            : "border-gray-100 bg-[#fbfcfb]"
+                            : "border-gray-100 bg-[#f8faf4]"
                         }`}
                       >
                         <div className="flex items-start justify-between gap-4">
@@ -1045,7 +1045,7 @@ export default async function TodayPage() {
                                 )}
                               </div>
 
-                              <p className="mt-1 text-sm text-gray-400">
+                              <p className="mt-1 text-sm text-[#74816f]">
                                 {formatGoalTarget(
                                   goal
                                 )}
@@ -1067,7 +1067,7 @@ export default async function TodayPage() {
                           {/* DURATION */}
 
                           {duration && (
-                            <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm ring-1 ring-gray-100">
+                            <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-[0_8px_30px_-18px_#294d3b35] ring-1 ring-gray-100">
                               {
                                 duration
                               }{" "}
@@ -1109,7 +1109,7 @@ export default async function TodayPage() {
                 )}
               </div>
             ) : (
-              <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-[#fbfcfb] px-6 py-10 text-center">
+              <div className="mt-6 rounded-2xl border border-[#dfe6d9] bg-[#f0f4e9] px-6 py-10 text-center">
                 <div className="text-3xl">
                   🌿
                 </div>
@@ -1119,7 +1119,7 @@ export default async function TodayPage() {
                   today.
                 </p>
 
-                <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-gray-400">
+                <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-[#74816f]">
                   Use today to
                   recharge or make
                   progress on
@@ -1132,14 +1132,14 @@ export default async function TodayPage() {
 
           {/* FOCUS */}
 
-          <section className="relative overflow-hidden rounded-3xl bg-[#45634c] p-6 text-white shadow-sm sm:p-8">
+          <section className="relative overflow-hidden rounded-3xl bg-[#294d3b] p-6 text-white shadow-[0_8px_30px_-18px_#294d3b35] sm:p-8">
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-white/5" />
 
             <div className="absolute -bottom-20 -left-16 h-48 w-48 rounded-full bg-white/5" />
 
             <div className="relative">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
                   Focus
                 </p>
 
@@ -1158,7 +1158,7 @@ export default async function TodayPage() {
                       :00
                     </p>
 
-                    <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/50">
+                    <p className="mt-2 text-xs uppercase tracking-[0.16em] text-white/75">
                       Focus time
                     </p>
                   </div>
@@ -1172,7 +1172,7 @@ export default async function TodayPage() {
                 Start Focus
               </Link>
 
-              <p className="mt-4 text-center text-xs text-white/50">
+              <p className="mt-4 text-center text-xs text-white/75">
                 {focusMinutes} min
                 focus ·{" "}
                 {breakMinutes} min
@@ -1184,7 +1184,7 @@ export default async function TodayPage() {
 
         {/* WEEKLY GOALS */}
 
-        <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="mt-6 rounded-3xl border border-[#dfe6d9] bg-white p-5 shadow-[0_8px_30px_-18px_#294d3b35] sm:p-7">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">
@@ -1196,7 +1196,7 @@ export default async function TodayPage() {
               </h2>
             </div>
 
-            <p className="hidden text-sm text-gray-400 sm:block">
+            <p className="hidden text-sm text-[#74816f] sm:block">
               Keep showing up.
             </p>
           </div>
@@ -1221,7 +1221,7 @@ export default async function TodayPage() {
                   return (
                     <div
                       key={goal.id}
-                      className="rounded-2xl border border-gray-100 bg-[#fbfcfb] p-5"
+                      className="rounded-2xl border border-gray-100 bg-[#f8faf4] p-5"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -1237,7 +1237,7 @@ export default async function TodayPage() {
                               }
                             </p>
 
-                            <p className="mt-0.5 text-xs text-gray-400">
+                            <p className="mt-0.5 text-xs text-[#74816f]">
                               {formatGoalTarget(
                                 goal
                               )}
@@ -1254,7 +1254,7 @@ export default async function TodayPage() {
 
                       <div className="mt-5">
                         <div className="mb-2 flex items-center justify-between text-xs">
-                          <span className="text-gray-400">
+                          <span className="text-[#74816f]">
                             Progress
                           </span>
 
@@ -1301,7 +1301,7 @@ export default async function TodayPage() {
               )}
             </div>
           ) : (
-            <div className="mt-6 rounded-2xl bg-[#fbfcfb] p-6 text-center text-sm text-gray-500">
+            <div className="mt-6 rounded-2xl bg-[#f8faf4] p-6 text-center text-sm text-gray-500">
               No active goals yet.
             </div>
           )}
@@ -1309,7 +1309,7 @@ export default async function TodayPage() {
 
         {/* STREAK */}
 
-        <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="mt-6 rounded-3xl border border-[#dfe6d9] bg-white p-5 shadow-[0_8px_30px_-18px_#294d3b35] sm:p-7">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
 
             {/* STREAK INFO */}
@@ -1326,7 +1326,7 @@ export default async function TodayPage() {
 
                 <div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-semibold tracking-tight text-gray-900">
+                    <span className="text-3xl font-semibold tracking-tight text-[#233b2c]">
                       {
                         currentStreak
                       }
@@ -1337,7 +1337,7 @@ export default async function TodayPage() {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-[#74816f]">
                     Longest streak:{" "}
                     {
                       longestStreak
@@ -1354,7 +1354,7 @@ export default async function TodayPage() {
             {/* 7 DAY STRIP */}
 
             <div className="w-full sm:w-auto">
-              <p className="mb-3 text-xs font-medium text-gray-400 sm:text-right">
+              <p className="mb-3 text-xs font-medium text-[#74816f] sm:text-right">
                 Last 7 days
               </p>
 
@@ -1382,7 +1382,7 @@ export default async function TodayPage() {
           </div>
 
           <div className="mt-6 border-t border-gray-100 pt-4">
-            <p className="text-xs leading-5 text-gray-400">
+            <p className="text-xs leading-5 text-[#74816f]">
               Any completed focus
               session or completed
               output counts as an
@@ -1393,8 +1393,8 @@ export default async function TodayPage() {
 
         {/* ACTIVITY CALENDAR */}
 
-        <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <section className="mt-6 rounded-3xl border border-[#dfe6d9] bg-white p-5 shadow-[0_8px_30px_-18px_#294d3b35] sm:p-7">
+          <div className="relative overflow-hidden rounded-3xl border border-[#dce5d3] bg-[#eaf0df] p-6 sm:flex sm:flex-row sm:items-end sm:justify-between sm:gap-5 sm:p-8">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">
                 Activity
@@ -1420,7 +1420,7 @@ export default async function TodayPage() {
                   }
                 </p>
 
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="mt-0.5 text-xs text-[#74816f]">
                   active days
                 </p>
               </div>
@@ -1432,7 +1432,7 @@ export default async function TodayPage() {
                   }
                 </p>
 
-                <p className="mt-0.5 text-xs text-gray-400">
+                <p className="mt-0.5 text-xs text-[#74816f]">
                   activities
                 </p>
               </div>
@@ -1467,7 +1467,7 @@ export default async function TodayPage() {
                           key={
                             index
                           }
-                          className="flex h-3.5 items-center text-[10px] text-gray-400"
+                          className="flex h-3.5 items-center text-[10px] text-[#74816f]"
                         >
                           {
                             label
@@ -1534,7 +1534,7 @@ export default async function TodayPage() {
 
               {/* LEGEND */}
 
-              <div className="mt-5 flex items-center justify-end gap-1.5 text-[10px] text-gray-400">
+              <div className="mt-5 flex items-center justify-end gap-1.5 text-[10px] text-[#74816f]">
                 <span className="mr-1">
                   Less
                 </span>
@@ -1562,7 +1562,7 @@ export default async function TodayPage() {
           </div>
 
           <div className="mt-5 border-t border-gray-100 pt-4">
-            <p className="text-xs leading-5 text-gray-400">
+            <p className="text-xs leading-5 text-[#74816f]">
               Focus sessions and
               completed outputs both
               contribute to your
@@ -1574,7 +1574,7 @@ export default async function TodayPage() {
         {/* FOOTER */}
 
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-[#74816f]">
             🌱 Momentum rewards
             showing up — not being
             busy.
@@ -1625,7 +1625,7 @@ function ActivityDayItem({
         className={`text-[11px] font-medium ${
           isToday
             ? "text-[#45634c]"
-            : "text-gray-400"
+            : "text-[#74816f]"
         }`}
       >
         {dayLabel}
@@ -1639,10 +1639,10 @@ function ActivityDayItem({
         }`}
         className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition ${
           active
-            ? "bg-[#45634c] text-white"
+            ? "bg-[#294d3b] text-white"
             : isToday
               ? "border border-[#b9cbbb] bg-[#f2f7f3] text-[#45634c]"
-              : "bg-gray-100 text-gray-400"
+              : "bg-gray-100 text-[#74816f]"
         }`}
       >
         {active
@@ -1741,7 +1741,7 @@ function ActivityMonthLabels({
     }[];
   }[];
 }) {
-  let previousMonth = "";
+
 
   return (
     <div className="mb-2 flex gap-1">
@@ -1770,19 +1770,17 @@ function ActivityMonthLabels({
               date
             );
 
-          const showMonth =
-            month !==
-            previousMonth;
-
-          previousMonth =
-            month;
+          const previousMonth = index === 0 ? "" : new Intl.DateTimeFormat("en-US", {
+            month: "short", timeZone: "UTC",
+          }).format(dateKeyToDisplayDate(weeks[index - 1].days[0].dateKey));
+          const showMonth = month !== previousMonth;
 
           return (
             <div
               key={
                 index
               }
-              className="w-3.5 shrink-0 text-[9px] text-gray-400"
+              className="w-3.5 shrink-0 text-[9px] text-[#74816f]"
             >
               {showMonth
                 ? month
@@ -1827,7 +1825,7 @@ function getActivityCellClass(
   }
 
   if (level >= 4) {
-    return `${base} bg-[#45634c]`;
+    return `${base} bg-[#294d3b]`;
   }
 
   return `${base} bg-gray-100`;
@@ -1904,7 +1902,7 @@ function TodayStatus({
 
     return (
       <div className="max-w-[220px]">
-        <div className="flex items-center justify-between text-xs text-gray-400">
+        <div className="flex items-center justify-between text-xs text-[#74816f]">
           <span>
             Today
           </span>
@@ -1936,7 +1934,7 @@ function TodayStatus({
     "count"
   ) {
     return (
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-[#74816f]">
         No output completed yet
         today.
       </p>
@@ -1948,7 +1946,7 @@ function TodayStatus({
    */
 
   return (
-    <p className="text-xs text-gray-400">
+    <p className="text-xs text-[#74816f]">
       No focus session completed
       yet today.
     </p>

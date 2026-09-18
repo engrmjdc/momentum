@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import AuthLayout from "@/components/auth-layout";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -56,14 +57,12 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f9f6] px-6 py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-10 text-center">
-          <div className="mb-4 text-3xl font-bold text-[#3f5f45]">
-            Momentum
-          </div>
+    <AuthLayout>
+      <div className="w-full">
+        <div className="mb-7 text-left">
+          
 
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+          <h1 className="text-3xl font-semibold tracking-tight text-[#233b2c]">
             Start building momentum.
           </h1>
 
@@ -72,8 +71,8 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-7 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="">
+          <h2 className="text-xl font-semibold text-[#233b2c]">
             Create your account
           </h2>
 
@@ -97,7 +96,7 @@ export default function SignupPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Enter your name"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="w-full rounded-xl border border-[#dbe3d7] bg-[#fafbf7] px-4 py-3 text-[#233b2c] outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
@@ -117,7 +116,7 @@ export default function SignupPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="w-full rounded-xl border border-[#dbe3d7] bg-[#fafbf7] px-4 py-3 text-[#233b2c] outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
@@ -138,7 +137,7 @@ export default function SignupPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="At least 6 characters"
                 autoComplete="new-password"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="w-full rounded-xl border border-[#dbe3d7] bg-[#fafbf7] px-4 py-3 text-[#233b2c] outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
@@ -155,7 +154,7 @@ export default function SignupPage() {
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Retype your password"
                 autoComplete="new-password"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="w-full rounded-xl border border-[#dbe3d7] bg-[#fafbf7] px-4 py-3 text-[#233b2c] outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
@@ -168,7 +167,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#45634c] px-4 py-3 font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-[#45634c] shadow-[0_5px_15px_-5px_#45634c70] px-4 py-3 font-medium text-white transition hover:bg-[#395440] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#45634c] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
@@ -190,6 +189,6 @@ export default function SignupPage() {
           Focus today. A better tomorrow.
         </p>
       </div>
-    </main>
+    </AuthLayout>
   );
 }

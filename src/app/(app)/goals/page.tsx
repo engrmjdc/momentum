@@ -100,7 +100,7 @@ export default async function GoalsPage() {
   }`;
 
   return (
-    <main className="min-h-screen bg-[#f7f9f6] text-[#171717]">
+    <main className="min-h-screen bg-[#f5f6ef] text-[#171717]">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -108,11 +108,11 @@ export default async function GoalsPage() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Your Goals</h1>
           <p className="mt-2 text-gray-500">Build consistency around what matters to you.</p>
           </div>
-          <Link href="/goals/new" className="self-start rounded-xl bg-[#45634c] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#354e3b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">+ Create Goal</Link>
+          <Link href="/goals/new" className="self-start rounded-xl bg-[#294d3b] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#354e3b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">+ Create Goal</Link>
         </header>
 
         {queryError ? (
-          <section role="alert" className="mt-8 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+          <section role="alert" className="mt-8 rounded-3xl border border-[#dfe6d9] bg-white p-8 shadow-[0_8px_30px_-18px_#294d3b35]">
             <h2 className="text-lg font-semibold">Unable to load your goals</h2>
             <p className="mt-2 text-sm text-gray-600">Refresh the page to try again. Your saved goals and history are unchanged.</p>
             <Link href="/goals" className="mt-4 inline-block rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c]">Try again</Link>
@@ -143,7 +143,7 @@ export default async function GoalsPage() {
                 {group.items.map(({ goal, value, percentage, reached }) => {
                   const unit = goal.measurement_type === "count" ? "items" : goal.measurement_type;
                   return (
-                    <article key={goal.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <article key={goal.id} className="rounded-3xl border border-[#dfe6d9] bg-white p-6 shadow-[0_8px_30px_-18px_#294d3b35]">
                       <div className="flex items-start gap-3">
                         <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3ee] text-xl">{goal.icon || "🎯"}</span>
                         <div className="min-w-0">

@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import AuthLayout from "@/components/auth-layout";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -64,14 +65,12 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f9f6] px-5 py-10">
-      <div className="w-full max-w-md">
-        <div className="text-center">
-          <div className="text-xl font-bold text-[#3f5f45]">
-            Momentum
-          </div>
+    <AuthLayout>
+      <div className="w-full">
+        <div className="text-left">
+          
 
-          <h1 className="mt-8 text-3xl font-semibold tracking-tight text-gray-900">
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#233b2c]">
             Welcome back.
           </h1>
 
@@ -80,7 +79,7 @@ function LoginForm() {
           </p>
         </div>
 
-        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="mt-7">
           {message === "check-email" && (
             <div className="mb-5 rounded-xl bg-[#eef4ef] p-4 text-sm leading-6 text-[#45634c]">
               Check your email to confirm your account, then sign in.
@@ -113,7 +112,7 @@ function LoginForm() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="mt-2 w-full rounded-xl border border-[#dbe3d7] bg-[#fafbf7] px-4 py-3 text-[#233b2c] outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
@@ -133,14 +132,14 @@ function LoginForm() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
-                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
+                className="mt-2 w-full rounded-xl border border-[#dbe3d7] bg-[#fafbf7] px-4 py-3 text-[#233b2c] outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-7 w-full rounded-xl bg-[#45634c] px-5 py-3 font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-7 w-full rounded-xl bg-[#45634c] shadow-[0_5px_15px_-5px_#45634c70] px-5 py-3 font-medium text-white transition hover:bg-[#395440] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#45634c] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
@@ -158,7 +157,7 @@ function LoginForm() {
           </p>
         </div>
       </div>
-    </main>
+    </AuthLayout>
   );
 }
 

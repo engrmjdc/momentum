@@ -41,7 +41,7 @@ export default async function ProjectsPage() {
   });
 
   return (
-    <main className="min-h-screen bg-[#f7f9f6] text-[#171717]">
+    <main className="min-h-screen bg-[#f5f6ef] text-[#171717]">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -49,11 +49,11 @@ export default async function ProjectsPage() {
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Your Projects</h1>
             <p className="mt-2 text-gray-500">Turn larger ideas into something you can steadily finish.</p>
           </div>
-          <Link href="/projects/new" className="self-start rounded-xl bg-[#45634c] px-5 py-3 text-sm font-semibold text-white hover:bg-[#354e3b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">+ Create Project</Link>
+          <Link href="/projects/new" className="self-start rounded-xl bg-[#294d3b] px-5 py-3 text-sm font-semibold text-white hover:bg-[#354e3b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">+ Create Project</Link>
         </header>
 
         {error ? (
-          <section role="alert" className="mt-8 rounded-3xl border border-gray-200 bg-white p-8">
+          <section role="alert" className="mt-8 rounded-3xl border border-[#dfe6d9] bg-white p-8">
             <h2 className="text-lg font-semibold">Unable to load projects</h2>
             <p className="mt-2 text-sm text-gray-600">Refresh the page to try again.</p>
           </section>
@@ -86,7 +86,7 @@ export default async function ProjectsPage() {
                         const completed = tasks.filter((task) => task.is_completed).length;
                         const percentage = tasks.length ? Math.round(completed / tasks.length * 100) : 0;
                         return (
-                          <article key={project.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                          <article key={project.id} className="rounded-3xl border border-[#dfe6d9] bg-white p-6 shadow-[0_8px_30px_-18px_#294d3b35]">
                             <h3 className="break-words text-lg font-semibold">{project.name}</h3>
                             {project.description && <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-gray-600">{project.description}</p>}
                             <div className="mt-5 space-y-2 border-t border-gray-100 pt-4 text-sm">
@@ -100,7 +100,7 @@ export default async function ProjectsPage() {
                               <div role="progressbar" aria-label={`${project.name} task progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage} className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
                                 <div className="h-full rounded-full bg-[#6c8772]" style={{ width: `${percentage}%` }} />
                               </div>
-                              <Link href={`/projects/${project.id}`} className="mt-4 inline-flex rounded-xl bg-[#45634c] px-4 py-2 text-sm font-medium text-white hover:bg-[#354e3b]">View Tasks<span className="sr-only">: {project.name}</span></Link>
+                              <Link href={`/projects/${project.id}`} className="mt-4 inline-flex rounded-xl bg-[#294d3b] px-4 py-2 text-sm font-medium text-white hover:bg-[#354e3b]">View Tasks<span className="sr-only">: {project.name}</span></Link>
                             </div>
                             <Link href={`/projects/${project.id}/edit`} className="mt-5 inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">Edit Project<span className="sr-only">: {project.name}</span></Link>
                             <ProjectStatusActions key={`${project.id}-${project.status}`} projectId={project.id} projectName={project.name} status={project.status} />

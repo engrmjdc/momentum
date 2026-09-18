@@ -81,7 +81,7 @@ export default async function ProgressPage() {
   const dateFormatter = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
 
   return (
-    <main className="min-h-screen bg-[#f7f9f6] text-[#171717]">
+    <main className="min-h-screen bg-[#f5f6ef] text-[#171717]">
       <div className="mx-auto min-w-0 max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">Progress</p>
@@ -89,7 +89,7 @@ export default async function ProgressPage() {
           <p className="mt-2 text-gray-500">See what your consistency is turning into over time.</p>
         </header>
         {failed ? (
-          <section role="alert" className="mt-8 rounded-3xl border border-gray-200 bg-white p-8">
+          <section role="alert" className="mt-8 rounded-3xl border border-[#dfe6d9] bg-white p-8">
             <h2 className="text-lg font-semibold">Unable to load progress</h2>
             <p className="mt-2 text-sm text-gray-600">Refresh the page to try again. Your saved activity is unchanged.</p>
           </section>
@@ -104,7 +104,7 @@ export default async function ProgressPage() {
                 </div>
               ))}
             </section>
-            <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7" aria-label="Streaks and recent activity">
+            <section className="mt-6 rounded-3xl border border-[#dfe6d9] bg-white p-5 shadow-[0_8px_30px_-18px_#294d3b35] sm:p-7" aria-label="Streaks and recent activity">
               <h2 className="text-xl font-semibold">Keep showing up</h2>
               <div className="mt-5 grid gap-6 sm:grid-cols-2">
                 <div className="flex flex-wrap gap-8">
@@ -118,7 +118,7 @@ export default async function ProgressPage() {
                       const date = new Date(`${day.dateKey}T00:00:00Z`);
                       return <li key={day.dateKey} title={`${day.dateKey}: ${counts.get(day.dateKey) ?? 0} activities`} className="min-w-0 text-center">
                         <p className="text-[10px] text-gray-500">{weekdayFormatter.format(date)}</p>
-                        <div className={`mt-2 rounded-lg py-2 text-xs font-medium ${day.active ? "bg-[#45634c] text-white" : "bg-gray-100 text-gray-500"} ${day.dateKey === today ? "ring-1 ring-[#45634c] ring-offset-2" : ""}`}><span aria-hidden="true">{day.active ? "✓" : "–"}</span><span className="sr-only">{day.dateKey}: {day.active ? "Active" : "No activity"}</span></div>
+                        <div className={`mt-2 rounded-lg py-2 text-xs font-medium ${day.active ? "bg-[#294d3b] text-white" : "bg-gray-100 text-gray-500"} ${day.dateKey === today ? "ring-1 ring-[#45634c] ring-offset-2" : ""}`}><span aria-hidden="true">{day.active ? "✓" : "–"}</span><span className="sr-only">{day.dateKey}: {day.active ? "Active" : "No activity"}</span></div>
                         <p className="mt-2 text-[10px] text-gray-500">{date.getUTCDate()}</p>
                       </li>;
                     })}
@@ -128,7 +128,7 @@ export default async function ProgressPage() {
               <p className="mt-5 text-xs leading-5 text-gray-500">A current streak can continue from yesterday until you record activity today. Streaks use completed focus sessions and goal-completion entries, including activity from paused goals.</p>
             </section>
             <ActivityCalendar weeks={calendar} todayDateKey={today} />
-            <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7" aria-label="This week's focus statistics">
+            <section className="mt-6 rounded-3xl border border-[#dfe6d9] bg-white p-5 shadow-[0_8px_30px_-18px_#294d3b35] sm:p-7" aria-label="This week's focus statistics">
               <h2 className="text-xl font-semibold">This Week</h2>
               <p className="mt-2 text-sm text-gray-500">Monday through Sunday in your profile’s timezone.</p>
               <dl className="mt-5 grid gap-5 sm:grid-cols-3">

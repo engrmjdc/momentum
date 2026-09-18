@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import GoalIconPicker from "@/components/goal-icon-picker";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -95,11 +96,7 @@ export default function EditGoalForm({ goal }: { goal: EditableGoal }) {
                 <label htmlFor="name" className="text-sm font-medium">Goal name <span className="text-gray-500">(required)</span></label>
                 <input id="name" name="name" defaultValue={goal.name} required placeholder="e.g. Learn Spanish" className={inputClass} />
               </div>
-              <div>
-                <label htmlFor="icon" className="text-sm font-medium">Icon</label>
-                <input id="icon" name="icon" defaultValue={goal.icon ?? ""} placeholder="🎯" aria-describedby="icon-help" className={inputClass} />
-                <p id="icon-help" className="mt-2 text-xs text-gray-500">Optional emoji.</p>
-              </div>
+              <GoalIconPicker defaultValue={goal.icon ?? ""} disabled={saving} />
             </div>
 
             <div>

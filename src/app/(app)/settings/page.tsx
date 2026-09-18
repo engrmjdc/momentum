@@ -2,12 +2,12 @@ import DeleteAccountForm from "./delete-account-form";
 
 export default function SettingsPage() {
   return (
-    <main className="min-h-screen bg-[#f7f9f6] text-[#171717]">
+    <main className="min-h-screen bg-[#f5f6ef] text-[#171717]">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">Settings</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-2 text-gray-500">Personalize how Momentum works for you.</p>
-        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="mt-8 rounded-3xl border border-[#dfe6d9] bg-white p-8 shadow-[0_8px_30px_-18px_#294d3b35]">
           <h2 className="text-lg font-semibold">Preferences</h2>
           <p className="mt-2 max-w-lg text-sm leading-6 text-gray-500">Profile, timezone, and focus preferences are coming next.</p>
         </div>
