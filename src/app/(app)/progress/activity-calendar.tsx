@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getActivityLevel, type CalendarWeek } from "@/lib/activity";
 
 const colors = ["bg-gray-100", "bg-[#dce8de]", "bg-[#abc2af]", "bg-[#78977e]", "bg-[#45634c]"];
@@ -11,6 +11,12 @@ export default function ActivityCalendar({ weeks, todayDateKey }: {
   todayDateKey: string;
 }) {
   const [selected, setSelected] = useState(todayDateKey);
+  const scrollContainer = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = scrollContainer.current;
+    if (container) container.scrollLeft = container.scrollWidth - container.clientWidth;
+  }, [todayDateKey]);
   const selectedDay = weeks.flatMap((week) => week.days).find((day) => day.dateKey === selected);
   const monthFormatter = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short" });
   const dayFormatter = new Intl.DateTimeFormat("en-US", {
@@ -20,6 +26,11 @@ export default function ActivityCalendar({ weeks, todayDateKey }: {
   const validDays = weeks.flatMap((week) => week.days).filter((day) => day.inRange);
   const activeDays = validDays.filter((day) => day.count > 0).length;
   const total = validDays.reduce((sum, day) => sum + day.count, 0);
+  const rangeFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC", month: "short", year: "numeric",
+  });
+  const firstDateKey = weeks[0]?.days[0]?.dateKey ?? todayDateKey;
+  const rangeLabel = `${rangeFormatter.format(toDate(firstDateKey))} – ${rangeFormatter.format(toDate(todayDateKey))}`;
 
   return (
     <section className="mt-6 min-w-0 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7" aria-label="52-week activity calendar">
@@ -31,7 +42,8 @@ export default function ActivityCalendar({ weeks, todayDateKey }: {
         </div>
         <p className="text-sm text-[#45634c]">{activeDays} active {activeDays === 1 ? "day" : "days"} · {total} {total === 1 ? "activity" : "activities"}</p>
       </div>
-      <div className="mt-6 overflow-x-auto pb-3" tabIndex={0} aria-label="Activity calendar, scroll horizontally to view all weeks">
+      <p className="mt-5 text-xs font-medium text-[#45634c]">{rangeLabel}</p>
+      <div ref={scrollContainer} className="mt-3 overflow-x-auto pb-3" tabIndex={0} aria-label="Activity calendar, scroll horizontally to view all weeks">
         <div className="flex w-max gap-3 px-1 py-1">
           <div className="grid grid-rows-[20px_repeat(7,14px)] gap-1 text-[10px] text-gray-500" aria-hidden="true">
             <span />
