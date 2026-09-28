@@ -14,6 +14,8 @@ type FocusPreference = {
   preset: "pomodoro" | "deep" | "custom";
   custom_focus_minutes: number;
   custom_break_minutes: number;
+  completion_sound_enabled: boolean;
+  browser_notifications_enabled: boolean;
 };
 
 export default async function FocusPage() {
@@ -47,7 +49,9 @@ export default async function FocusPage() {
           `
             preset,
             custom_focus_minutes,
-            custom_break_minutes
+            custom_break_minutes,
+            completion_sound_enabled,
+            browser_notifications_enabled
           `
         )
         .eq("user_id", user.id)
@@ -87,6 +91,8 @@ export default async function FocusPage() {
       defaultFocusMinutes={defaultFocusMinutes}
       breakMinutes={breakMinutes}
       presetLabel={presetLabel}
+      completionSoundEnabled={preference?.completion_sound_enabled ?? true}
+      browserNotificationsEnabled={preference?.browser_notifications_enabled ?? false}
     />
   );
 }

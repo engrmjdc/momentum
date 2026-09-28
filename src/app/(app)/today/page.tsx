@@ -649,7 +649,9 @@ export default async function TodayPage() {
             </span>
 
             <span>
-              {allTodayCompleted
+              {todaysGoals.length === 0
+                ? "Open day"
+                : allTodayCompleted
                 ? "Today's plan complete"
                 : `${completedTodayCount} / ${todaysGoals.length} done today`}
             </span>
@@ -854,23 +856,26 @@ export default async function TodayPage() {
                 )}
               </div>
             ) : (
-              <div className="mt-6 rounded-2xl border border-[#dfe6d9] bg-[#f0f4e9] px-6 py-10 text-center">
-                <div className="text-3xl">
-                  🌿
+              <div className="relative mt-6 overflow-hidden rounded-2xl border border-[#dce5d3] bg-gradient-to-br from-[#f2f6ea] via-[#f8faf4] to-white px-6 py-9 text-center">
+                <div aria-hidden="true" className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#dfe9d6]/70" />
+                <div aria-hidden="true" className="absolute -bottom-12 -left-8 h-24 w-24 rounded-full bg-[#edf2e5]" />
+                <div className="relative">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-2xl shadow-[0_8px_24px_-14px_#294d3b80]">{goals.length > 0 ? "🌤️" : "🌱"}</div>
+                  <p className="mt-4 font-semibold text-[#294d3b]">{goals.length > 0 ? "Your day is open." : "Start with one meaningful goal."}</p>
+                  <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#74816f]">
+                    {goals.length > 0 ? "Nothing is scheduled today. You can still make progress with a focus session or adjust your weekly routine." : "Create a goal and Momentum will help turn it into a routine you can keep."}
+                  </p>
+                  <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+                    {goals.length > 0 ? (
+                      <>
+                        <Link href="/focus" className="rounded-xl bg-[#45634c] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#294d3b]">Start a focus session</Link>
+                        <Link href="/goals" className="rounded-xl border border-[#cbd8c7] bg-white px-4 py-2.5 text-sm font-semibold text-[#45634c] transition hover:bg-[#f5f8f1]">Review goals</Link>
+                      </>
+                    ) : (
+                      <Link href="/goals/new" className="rounded-xl bg-[#45634c] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#294d3b]">Create your first goal</Link>
+                    )}
+                  </div>
                 </div>
-
-                <p className="mt-3 font-medium">
-                  Nothing scheduled
-                  today.
-                </p>
-
-                <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-[#74816f]">
-                  Use today to
-                  recharge or make
-                  progress on
-                  something that
-                  feels important.
-                </p>
               </div>
             )}
           </section>

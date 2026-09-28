@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import MomentumSelect from "@/components/momentum-select";
 
 const TOTAL_STEPS = 5;
+const STEP_LABELS = ["Welcome", "Goals", "Targets", "Routine", "Focus"];
 
 type MeasurementType = "sessions" | "minutes" | "count";
 type FocusPreset = "pomodoro" | "deep" | "custom";
@@ -39,10 +41,10 @@ const DAYS: Day[] = [
 
 const STARTER_GOALS: Goal[] = [
   {
-    id: "health-fitness",
-    name: "Health & Fitness",
-    icon: "💪",
-    description: "Exercise, move, and take care of your body.",
+    id: "wellbeing",
+    name: "Health & Wellbeing",
+    icon: "🌿",
+    description: "Care for your physical and mental wellbeing.",
     isCustom: false,
     measurementType: "sessions",
     weeklyTarget: 3,
@@ -50,59 +52,59 @@ const STARTER_GOALS: Goal[] = [
     scheduledDays: [1, 3, 6],
   },
   {
-    id: "career",
-    name: "Career",
+    id: "career-work",
+    name: "Career & Work",
     icon: "💼",
-    description: "Build skills and grow professionally.",
+    description: "Make steady progress in your work or career.",
     isCustom: false,
     measurementType: "sessions",
     weeklyTarget: 3,
     defaultDuration: 45,
     scheduledDays: [1, 3, 6],
+  },
+  {
+    id: "learning-skills",
+    name: "Learning & Skills",
+    icon: "📚",
+    description: "Learn something new or strengthen a skill.",
+    isCustom: false,
+    measurementType: "minutes",
+    weeklyTarget: 120,
+    defaultDuration: 30,
+    scheduledDays: [2, 4, 6],
   },
   {
     id: "personal-projects",
     name: "Personal Projects",
     icon: "🚀",
-    description: "Turn ideas into things you've built.",
-    isCustom: false,
-    measurementType: "minutes",
-    weeklyTarget: 240,
-    defaultDuration: 60,
-    scheduledDays: [2, 4, 6],
-  },
-  {
-    id: "side-income",
-    name: "Side Income",
-    icon: "💰",
-    description: "Create additional income opportunities.",
-    isCustom: false,
-    measurementType: "count",
-    weeklyTarget: 5,
-    defaultDuration: 30,
-    scheduledDays: [1, 2, 4, 6],
-  },
-  {
-    id: "learning",
-    name: "Learning",
-    icon: "📚",
-    description: "Make consistent time to learn.",
+    description: "Make time for an idea or project of your own.",
     isCustom: false,
     measurementType: "sessions",
     weeklyTarget: 3,
-    defaultDuration: 30,
+    defaultDuration: 45,
     scheduledDays: [2, 4, 6],
   },
   {
-    id: "content-creation",
-    name: "Content Creation",
-    icon: "🎬",
-    description: "Create and publish consistently.",
+    id: "finances",
+    name: "Money & Finances",
+    icon: "💰",
+    description: "Build healthier habits around money.",
+    isCustom: false,
+    measurementType: "sessions",
+    weeklyTarget: 1,
+    defaultDuration: 25,
+    scheduledDays: [6],
+  },
+  {
+    id: "relationships",
+    name: "Relationships & Community",
+    icon: "🤝",
+    description: "Be present for the people and community around you.",
     isCustom: false,
     measurementType: "count",
-    weeklyTarget: 14,
+    weeklyTarget: 2,
     defaultDuration: 30,
-    scheduledDays: [1, 3, 5, 7],
+    scheduledDays: [3, 7],
   },
 ];
 
@@ -363,28 +365,26 @@ export default function OnboardingPage() {
     step === 2 && selectedGoals.length === 0;
 
   return (
-    <main className="min-h-screen bg-[#f7f9f6] px-5 py-8 sm:px-8">
-      <div className="mx-auto max-w-3xl">
+    <main className="relative min-h-screen overflow-hidden bg-[#f5f7f1] px-5 pb-28 pt-6 sm:px-8 sm:pb-28 sm:pt-8">
+      <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-40 h-72 w-72 rounded-full bg-[#dfe9d6]/55 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-20 top-10 h-80 w-80 rounded-full bg-[#edf1d7]/65 blur-3xl" />
+      <div className="relative mx-auto max-w-4xl">
         <header className="flex items-center justify-between">
-          <div className="text-xl font-bold text-[#3f5f45]">
-            Momentum
+          <div className="flex items-center gap-2 text-xl font-bold text-[#3f5f45]">
+            <span aria-hidden="true">🌱</span> Momentum
           </div>
 
-          <div className="text-sm text-gray-500">
-            {step} of {TOTAL_STEPS}
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6c8772]">{STEP_LABELS[step - 1]}</p>
+            <p className="mt-0.5 text-xs text-gray-400">Step {step} of {TOTAL_STEPS}</p>
           </div>
         </header>
 
-        <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-gray-200">
-          <div
-            className="h-full rounded-full bg-[#45634c] transition-all duration-300"
-            style={{
-              width: `${(step / TOTAL_STEPS) * 100}%`,
-            }}
-          />
+        <div className="mt-6 grid grid-cols-5 gap-2" aria-label={`Onboarding progress: step ${step} of ${TOTAL_STEPS}`}>
+          {STEP_LABELS.map((label, index) => <div key={label} className={`h-1.5 rounded-full transition-colors duration-300 ${index < step ? "bg-[#45634c]" : "bg-[#dfe4df]"}`} />)}
         </div>
 
-        <section className="flex min-h-[65vh] items-center justify-center py-12">
+        <section className="flex min-h-[65vh] items-center justify-center py-10 sm:py-12">
           <div className="w-full">
             {step === 1 && <WelcomeStep />}
 
@@ -426,12 +426,12 @@ export default function OnboardingPage() {
           </div>
         </section>
 
-        <footer className="flex items-end justify-between gap-4 border-t border-gray-200 pt-6">
+        <footer className="fixed bottom-4 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-[#dfe6d9] bg-white/95 p-2 shadow-[0_18px_48px_-20px_#294d3b90] backdrop-blur">
           <button
             type="button"
             onClick={previousStep}
             disabled={step === 1 || isSubmitting}
-            className="rounded-xl px-5 py-3 text-sm font-medium text-gray-600 transition hover:bg-gray-100 disabled:invisible"
+            className="rounded-xl border border-transparent px-4 py-2.5 text-sm font-semibold text-[#61715f] transition hover:border-[#dfe6d9] hover:bg-[#f5f7f1] disabled:invisible"
           >
             ← Back
           </button>
@@ -441,9 +441,9 @@ export default function OnboardingPage() {
               type="button"
               onClick={nextStep}
               disabled={continueDisabled}
-              className="rounded-xl bg-[#45634c] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#395440] disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-w-[150px] rounded-xl bg-[#45634c] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#294d3b] disabled:cursor-not-allowed disabled:bg-[#d7ded5] disabled:text-[#7f8b80] disabled:shadow-none"
             >
-              Continue →
+              {continueDisabled ? "Choose a goal" : "Continue  →"}
             </button>
           ) : (
             <div className="flex flex-col items-end gap-3">
@@ -498,67 +498,50 @@ export default function OnboardingPage() {
 
 function WelcomeStep() {
   return (
-    <div className="mx-auto max-w-xl text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e7eee8] text-3xl">
-        🌱
-      </div>
+    <div className="overflow-hidden rounded-[2rem] border border-[#dce5d5] bg-white shadow-[0_24px_70px_-38px_#294d3b80]">
+      <div className="grid lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="p-7 sm:p-10 lg:p-12">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#edf3e7] px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#52735a]">
+            <span aria-hidden="true">✨</span> Welcome to Momentum
+          </div>
+          <h1 className="mt-6 max-w-xl text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">Build a routine that moves with you.</h1>
+          <p className="mt-5 max-w-lg text-base leading-7 text-gray-500">Choose what matters, make a realistic weekly plan, and give each goal focused attention. Setup takes about two minutes.</p>
 
-      <p className="mt-8 text-sm font-medium uppercase tracking-[0.2em] text-[#52735a]">
-        Welcome to Momentum
-      </p>
+          <div className="mt-8 border-l-2 border-[#dce6d7] pl-6">
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#74816f]">Here&apos;s what we&apos;ll set up</p>
+            <div className="space-y-6">
+              <WelcomeStepItem number="1" icon="🎯" title="Choose your goals" description="Start with the few things that matter now." />
+              <WelcomeStepItem number="2" icon="🗓️" title="Shape your week" description="Pick achievable targets and preferred days." />
+              <WelcomeStepItem number="3" icon="⏱️" title="Find your focus rhythm" description="Choose a timer that helps you stay present." />
+            </div>
+          </div>
+        </div>
 
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
-        Build progress that lasts.
-      </h1>
-
-      <p className="mx-auto mt-5 max-w-md text-base leading-7 text-gray-500">
-        Momentum helps you focus on what matters without trying to do
-        everything every day.
-      </p>
-
-      <div className="mx-auto mt-10 grid max-w-lg gap-3 text-left sm:grid-cols-3">
-        <WelcomeCard
-          icon="🎯"
-          title="Choose goals"
-          description="Decide what matters."
-        />
-
-        <WelcomeCard
-          icon="⏱️"
-          title="Focus"
-          description="Give it your attention."
-        />
-
-        <WelcomeCard
-          icon="🔥"
-          title="Stay consistent"
-          description="Build momentum."
-        />
+        <div className="relative flex min-h-[340px] items-center justify-center overflow-hidden bg-[#294d3b] p-7 sm:p-10">
+          <div aria-hidden="true" className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/5" />
+          <div aria-hidden="true" className="absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-[#78977e]/20" />
+          <div className="relative w-full max-w-xs rounded-3xl border border-white/15 bg-white/10 p-5 text-white shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#cfdeca]">A balanced week</span><span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px]">Preview</span></div>
+            <div className="mt-5 rounded-2xl bg-white p-4 text-[#233b2c]">
+              <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf3e7]">📚</span><div><p className="text-sm font-semibold">Keep learning</p><p className="mt-0.5 text-xs text-[#74816f]">3 sessions this week</p></div></div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100"><div className="h-full w-2/3 rounded-full bg-[#6c8772]" /></div>
+              <div className="mt-4 flex gap-1.5">{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={`${day}-${index}`} className={`flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-semibold ${[1, 3, 5].includes(index) ? "bg-[#45634c] text-white" : "bg-[#f2f4ef] text-gray-400"}`}>{day}</span>)}</div>
+            </div>
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4"><div><p className="text-xs text-[#cfdeca]">Focus rhythm</p><p className="mt-1 font-semibold">25 min · Pomodoro</p></div><span className="text-2xl">🍅</span></div>
+            <p className="mt-5 text-center text-xs leading-5 text-[#cfdeca]">A gentle plan you can change anytime.</p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function WelcomeCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: string;
-  title: string;
-  description: string;
-}) {
+function WelcomeStepItem({ number, icon, title, description }: { number: string; icon: string; title: string; description: string }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <div className="text-xl">{icon}</div>
-
-      <p className="mt-3 font-medium text-gray-900">
-        {title}
-      </p>
-
-      <p className="mt-1 text-sm text-gray-500">
-        {description}
-      </p>
+    <div className="relative flex gap-3">
+      <span className="absolute -left-[39px] top-0 flex h-7 w-7 items-center justify-center rounded-full border-4 border-white bg-[#45634c] text-[10px] font-bold text-white">{number}</span>
+      <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1f5ec]">{icon}</span>
+      <div><p className="text-sm font-semibold text-gray-900">{title}</p><p className="mt-1 text-sm leading-5 text-gray-500">{description}</p></div>
     </div>
   );
 }
@@ -583,23 +566,26 @@ function GoalsStep({
   const selectedCount = selectedGoalIds.length;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <div className="text-center">
         <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#52735a]">
           Your Goals
         </p>
 
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-gray-900">
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">
           What do you want to improve?
         </h1>
 
-        <p className="mt-4 text-gray-500">
+        <p className="mt-3 text-gray-500">
           Choose what matters right now. You can always change these
           later.
         </p>
+        <button type="button" onClick={openCustomGoal} className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#cbd8c7] bg-white px-4 py-2 text-sm font-semibold text-[#45634c] shadow-sm transition hover:border-[#7f9982] hover:bg-[#f2f6ed]">
+          <span aria-hidden="true" className="text-base">＋</span> Create a custom goal
+        </button>
       </div>
 
-      <div className="mt-10 grid gap-3 sm:grid-cols-2">
+      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {goals.map((goal) => {
           const selected = selectedGoalIds.includes(goal.id);
 
@@ -609,7 +595,7 @@ function GoalsStep({
                 type="button"
                 onClick={() => toggleGoal(goal.id)}
                 aria-pressed={selected}
-                className={`h-full w-full rounded-2xl border p-5 text-left transition ${
+                className={`h-full min-h-[142px] w-full rounded-2xl border p-4 text-left transition ${
                   selected
                     ? "border-[#45634c] bg-[#eef4ef] ring-1 ring-[#45634c]"
                     : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
@@ -625,11 +611,11 @@ function GoalsStep({
                   {goal.icon}
                 </div>
 
-                <h2 className="mt-4 pr-8 font-semibold text-gray-900">
+                <h2 className="mt-3 pr-8 font-semibold text-gray-900">
                   {goal.name}
                 </h2>
 
-                <p className="mt-1 pr-6 text-sm leading-6 text-gray-500">
+                <p className="mt-1 pr-6 text-sm leading-5 text-gray-500">
                   {goal.description}
                 </p>
               </button>
@@ -652,15 +638,7 @@ function GoalsStep({
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={openCustomGoal}
-        className="mt-4 w-full rounded-2xl border border-dashed border-gray-300 bg-transparent p-4 text-sm font-medium text-[#45634c] transition hover:border-[#45634c] hover:bg-[#eef4ef]"
-      >
-        + Create your own goal
-      </button>
-
-      <p className="mt-5 text-center text-sm text-gray-400">
+      <p className="mt-4 text-center text-sm text-gray-400">
         {selectedCount === 0
           ? "Select at least one goal to continue."
           : `${selectedCount} ${
@@ -724,6 +702,14 @@ function GoalTargetCard({
   goal: Goal;
   updateGoal: (goalId: string, updates: Partial<Goal>) => void;
 }) {
+  const [customDurationOpen, setCustomDurationOpen] = useState(
+    !DURATION_OPTIONS.includes(goal.defaultDuration)
+  );
+  const [targetInput, setTargetInput] = useState(String(goal.weeklyTarget));
+
+  useEffect(() => {
+    setTargetInput(String(goal.weeklyTarget));
+  }, [goal.weeklyTarget]);
   function changeMeasurement(
     measurementType: MeasurementType
   ) {
@@ -809,28 +795,14 @@ function GoalTargetCard({
             Measure progress by
           </label>
 
-          <select
-            id={`measurement-${goal.id}`}
+          <MomentumSelect id={`measurement-${goal.id}`} placeholder="Choose a measurement"
             value={goal.measurementType}
-            onChange={(event) =>
-              changeMeasurement(
-                event.target.value as MeasurementType
-              )
-            }
-            className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15"
-          >
-            <option value="sessions">
-              Sessions
-            </option>
-
-            <option value="minutes">
-              Minutes
-            </option>
-
-            <option value="count">
-              Count
-            </option>
-          </select>
+            onChange={(value) => changeMeasurement(value as MeasurementType)}
+            options={[
+              { value: "sessions", label: "Sessions", icon: "⏱️", detail: "times per week" },
+              { value: "minutes", label: "Minutes", icon: "⌛", detail: "time spent" },
+              { value: "count", label: "Items completed", icon: "✓", detail: "outputs" },
+            ]} />
         </div>
 
         <div>
@@ -847,14 +819,23 @@ function GoalTargetCard({
               −
             </button>
 
-            <div className="min-w-0 px-2 text-center">
-              <span className="font-semibold text-gray-900">
-                {goal.weeklyTarget}
-              </span>
-
-              <span className="ml-1 text-sm text-gray-500">
-                {targetUnit}
-              </span>
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1 px-2 text-center">
+              <label htmlFor={`target-${goal.id}`} className="sr-only">Weekly target for {goal.name}</label>
+              <input id={`target-${goal.id}`} type="text" inputMode="numeric" pattern="[0-9]*"
+                value={targetInput}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setTargetInput(next);
+                  const parsed = Number(next);
+                  if (/^\d+$/.test(next) && Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 2147483647) updateGoal(goal.id, { weeklyTarget: parsed });
+                }}
+                onBlur={() => {
+                  const parsed = Number(targetInput);
+                  if (!Number.isInteger(parsed) || parsed < 1) setTargetInput(String(goal.weeklyTarget));
+                  else if (parsed > 2147483647) { setTargetInput("2147483647"); updateGoal(goal.id, { weeklyTarget: 2147483647 }); }
+                }}
+                className="w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-right font-semibold text-gray-900 outline-none transition hover:border-[#dce7de] hover:bg-[#f7faf4] focus:border-[#45634c] focus:bg-white focus:ring-2 focus:ring-[#dce7de]" />
+              <span className="shrink-0 text-sm text-gray-500">{targetUnit}</span>
             </div>
 
             <button
@@ -865,6 +846,7 @@ function GoalTargetCard({
               +
             </button>
           </div>
+          <p className="mt-2 text-xs text-gray-400">Type any whole number, or use the − and + buttons.</p>
         </div>
       </div>
 
@@ -883,9 +865,7 @@ function GoalTargetCard({
                 key={duration}
                 type="button"
                 onClick={() =>
-                  updateGoal(goal.id, {
-                    defaultDuration: duration,
-                  })
+                  { setCustomDurationOpen(false); updateGoal(goal.id, { defaultDuration: duration }); }
                 }
                 aria-pressed={selected}
                 className={`min-w-[64px] rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
@@ -898,7 +878,24 @@ function GoalTargetCard({
               </button>
             );
           })}
+          <button type="button" onClick={() => {
+            setCustomDurationOpen(true);
+            if (DURATION_OPTIONS.includes(goal.defaultDuration)) updateGoal(goal.id, { defaultDuration: 40 });
+          }} aria-pressed={customDurationOpen}
+            className={`min-w-[82px] rounded-xl border px-4 py-2.5 text-sm font-medium transition ${customDurationOpen ? "border-[#45634c] bg-[#eef4ef] text-[#45634c] ring-1 ring-[#45634c]" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"}`}>
+            Custom
+          </button>
         </div>
+        {customDurationOpen && (
+          <div className="mt-3 flex max-w-xs items-center gap-3 rounded-2xl border border-[#dce7de] bg-[#f7faf4] p-3">
+            <label htmlFor={`custom-duration-${goal.id}`} className="text-sm font-medium text-[#45634c]">Minutes</label>
+            <input id={`custom-duration-${goal.id}`} type="number" min={1} max={180} step={1}
+              value={goal.defaultDuration}
+              onChange={(event) => updateGoal(goal.id, { defaultDuration: Math.min(180, Math.max(1, Number(event.target.value) || 1)) })}
+              className="min-w-0 flex-1 rounded-xl border border-[#cbd8c7] bg-white px-3 py-2 text-sm outline-none focus:border-[#45634c] focus:ring-2 focus:ring-[#dce7de]" />
+            <span className="text-xs text-gray-500">1–180</span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,11 +3,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast-provider";
 
 type Props = { kind: "goal" | "project"; id: string; name: string };
 
 export default function DeleteItemButton({ kind, id, name }: Props) {
   const router = useRouter();
+  const { showToast } = useToast();
   const busy = useRef(false);
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -27,10 +29,12 @@ export default function DeleteItemButton({ kind, id, name }: Props) {
         ? await supabase.from("goals").delete().eq("id", id).eq("user_id", user.id).select("id").single()
         : await supabase.from("projects").delete().eq("id", id).eq("user_id", user.id).select("id").single();
       if (result.error) throw result.error;
+      showToast(`${kind === "goal" ? "Goal" : "Project"} deleted.`);
       router.replace(kind === "goal" ? "/goals" : "/projects");
     } catch (caught) {
       console.error(`Unable to delete ${label}:`, caught);
       setError(`Could not delete this ${label}. Please try again.`);
+      showToast(`Could not delete this ${label}.`, "error");
       busy.current = false;
       setDeleting(false);
     }

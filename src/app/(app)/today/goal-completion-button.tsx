@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast-provider";
 
 type Props = {
   userId: string;
@@ -16,6 +17,7 @@ export default function GoalCompletionButton({
   goalName,
 }: Props) {
   const router = useRouter();
+  const { showToast } = useToast();
 
   const [isSaving, setIsSaving] =
     useState(false);
@@ -52,6 +54,7 @@ export default function GoalCompletionButton({
       }
 
       setShowSuccess(true);
+      showToast(`Recorded progress for ${goalName}.`);
 
       /*
        * Refresh the server-rendered dashboard so the
@@ -73,6 +76,7 @@ export default function GoalCompletionButton({
           ? caughtError.message
           : "Unable to record completion."
       );
+      showToast("Could not record that completion.", "error");
     } finally {
       setIsSaving(false);
     }

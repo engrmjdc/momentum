@@ -19,6 +19,8 @@ type Props = {
   defaultFocusMinutes: number;
   breakMinutes: number;
   presetLabel: string;
+  completionSoundEnabled: boolean;
+  browserNotificationsEnabled: boolean;
 };
 
 type TimerStatus =
@@ -45,6 +47,8 @@ export default function FocusTimer({
   defaultFocusMinutes,
   breakMinutes,
   presetLabel,
+  completionSoundEnabled,
+  browserNotificationsEnabled,
 }: Props) {
   const router = useRouter();
 
@@ -67,8 +71,46 @@ export default function FocusTimer({
     useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(completionSoundEnabled);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const completionSoundPlayedRef = useRef(false);
+  const completionSavedRef = useRef(false);
 
   const endTimeRef = useRef<number | null>(null);
+
+  function prepareCompletionSound() {
+    if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+    if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume();
+  }
+
+  function playCompletionSound() {
+    const context = audioContextRef.current;
+    if (!context || !soundEnabled) return;
+    const now = context.currentTime;
+    [523.25, 659.25, 783.99].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = now + index * 0.18;
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.14, start + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.55);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.58);
+    });
+  }
+
+  useEffect(() => {
+    if (status === "completed" && !completionSoundPlayedRef.current) {
+      completionSoundPlayedRef.current = true;
+      playCompletionSound();
+      if (browserNotificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
+        new Notification("Focus complete", { body: "Nice work. Your Momentum focus session is complete." });
+      }
+    }
+  }, [status, soundEnabled, browserNotificationsEnabled]);
 
   const selectedGoal =
     goals.find((goal) => goal.id === selectedGoalId) ??
@@ -150,10 +192,12 @@ export default function FocusTimer({
     if (
       status !== "completed" ||
       !sessionId ||
-      isSaving
+      completionSavedRef.current
     ) {
       return;
     }
+
+    completionSavedRef.current = true;
 
     async function saveCompletedSession() {
       setIsSaving(true);
@@ -203,7 +247,6 @@ export default function FocusTimer({
     durationMinutes,
     userId,
     router,
-    isSaving,
   ]);
 
   /*
@@ -221,6 +264,9 @@ export default function FocusTimer({
     }
 
     setError(null);
+    prepareCompletionSound();
+    completionSoundPlayedRef.current = false;
+    completionSavedRef.current = false;
     setIsSaving(true);
 
     try {
@@ -371,6 +417,8 @@ export default function FocusTimer({
         defaultFocusMinutes;
 
     setSessionId(null);
+    completionSoundPlayedRef.current = false;
+    completionSavedRef.current = false;
     setStatus("idle");
     setDurationMinutes(minutes);
     setRemainingSeconds(minutes * 60);
@@ -526,6 +574,15 @@ export default function FocusTimer({
               minute for testing.
             </div>
           )}
+
+          <div className="mt-6 flex justify-end">
+            <button type="button" aria-pressed={soundEnabled}
+              onClick={() => setSoundEnabled((current) => !current)}
+              className="inline-flex items-center gap-2 rounded-full border border-[#dce7de] bg-white px-3.5 py-2 text-xs font-medium text-[#45634c] transition hover:bg-[#eef4ef] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#45634c]">
+              <span aria-hidden="true">{soundEnabled ? "🔔" : "🔕"}</span>
+              Completion sound {soundEnabled ? "on" : "off"}
+            </button>
+          </div>
 
           {/* Goal selector */}
 

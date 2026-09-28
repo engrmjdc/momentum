@@ -22,7 +22,9 @@ type Goal = {
 
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default async function GoalsPage() {
+export default async function GoalsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  const requestedView = (await searchParams).view;
+  const view = requestedView === "paused" || requestedView === "all" ? requestedView : "active";
   const supabase = await createClient();
   const { user, profile: cachedProfile } = await getAppSession();
   if (!user) redirect("/login");
@@ -89,6 +91,9 @@ export default async function GoalsPage() {
     { name: "Active Goals", items: activeProgress, empty: "No active goals yet", hint: "Create a goal or resume one below to build your weekly routine." },
     { name: "Paused Goals", items: pausedProgress, empty: "No paused goals", hint: "Paused goals keep their schedules and history. Resume them whenever you are ready." },
   ];
+  const visibleGroups = view === "all" ? groups : groups.filter((group) =>
+    view === "active" ? group.name === "Active Goals" : group.name === "Paused Goals"
+  );
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone, month: "short", day: "numeric",
   });
@@ -125,26 +130,41 @@ export default async function GoalsPage() {
               <span className="self-start rounded-full bg-white px-4 py-2 text-sm font-medium text-[#45634c]">{activeProgress.length} active {activeProgress.length === 1 ? "goal" : "goals"}</span>
             </section>
 
-            {groups.map((group) => (
+            <nav aria-label="Filter goals" className="mt-6 flex w-full gap-1 overflow-x-auto rounded-2xl border border-[#dfe6d9] bg-white p-1.5 sm:w-fit">
+              {[
+                { value: "active", label: "Active", count: activeProgress.length },
+                { value: "paused", label: "Paused", count: pausedProgress.length },
+                { value: "all", label: "All", count: progress.length },
+              ].map((tab) => (
+                <Link key={tab.value} href={tab.value === "active" ? "/goals" : `/goals?view=${tab.value}`}
+                  aria-current={view === tab.value ? "page" : undefined}
+                  className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${view === tab.value ? "bg-[#294d3b] text-white shadow-sm" : "text-[#61715f] hover:bg-[#f0f4e9]"}`}>
+                  {tab.label}<span className={`rounded-full px-2 py-0.5 text-[10px] ${view === tab.value ? "bg-white/15 text-white" : "bg-[#edf2e5] text-[#61715f]"}`}>{tab.count}</span>
+                </Link>
+              ))}
+            </nav>
+
+            {visibleGroups.map((group) => (
               <section key={group.name} aria-label={group.name} className="mt-8">
                 <h2 className="text-xl font-semibold">{group.name}</h2>
                 <p className="mt-2 text-sm text-gray-500">{group.name === "Active Goals" ? "Goals in your current routine. Pausing removes a goal from Today’s Plan." : "Schedules and history are preserved while these goals are paused."}</p>
             {group.items.length === 0 ? (
               <section className="mt-6 rounded-3xl border border-dashed border-gray-300 bg-white p-10 text-center">
-                <span aria-hidden="true" className="text-3xl">🌱</span>
+                <span aria-hidden="true" className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#edf3e7] text-2xl">{group.name === "Active Goals" ? "🌱" : "⏸️"}</span>
                 <h3 className="mt-4 text-lg font-semibold">{group.empty}</h3>
-                <p className="mt-2 text-sm text-gray-500">{group.hint}</p>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">{group.hint}</p>
+                {group.name === "Active Goals" && <Link href="/goals/new" className="mt-5 inline-flex rounded-xl bg-[#294d3b] px-5 py-2.5 text-sm font-semibold text-white">Create a goal</Link>}
               </section>
             ) : (
               <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {group.items.map(({ goal, value, percentage, reached }) => {
                   const unit = goal.measurement_type === "count" ? "items" : goal.measurement_type;
                   return (
-                    <article key={goal.id} className="rounded-3xl border border-[#dfe6d9] bg-white p-6 shadow-[0_8px_30px_-18px_#294d3b35]">
+                    <article key={goal.id} className={`group flex min-h-full flex-col rounded-3xl border bg-white p-6 shadow-[0_8px_30px_-18px_#294d3b35] transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-22px_#294d3b60] ${reached ? "border-[#b8cdb8]" : "border-[#dfe6d9]"}`}>
                       <div className="flex items-start gap-3">
                         <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#edf3ee] text-xl">{goal.icon || "🎯"}</span>
                         <div className="min-w-0">
-                          <h3 className="break-words text-lg font-semibold">{goal.name}</h3>
+                          <div className="flex flex-wrap items-center gap-2"><h3 className="break-words text-lg font-semibold">{goal.name}</h3>{reached && <span className="rounded-full bg-[#e7f1e5] px-2 py-1 text-[10px] font-semibold text-[#365d3e]">On target</span>}</div>
                           <p className="mt-1 text-sm text-gray-500">{goal.weekly_target} {unit} / week</p>
                         </div>
                       </div>
@@ -170,8 +190,8 @@ export default async function GoalsPage() {
                           </ul>
                         ) : <p className="mt-2 text-sm text-gray-500">No days scheduled.</p>}
                       </div>
-                      <div className="mt-5 flex flex-wrap items-start gap-2">
-                      <Link href={`/goals/${goal.id}/edit`} className="inline-flex rounded-xl border border-[#dce7de] px-4 py-2 text-sm font-medium text-[#45634c] hover:bg-[#edf3ee]">Edit Goal<span className="sr-only">: {goal.name}</span></Link>
+                      <div className="mt-auto flex flex-wrap items-start gap-2 border-t border-gray-100 pt-5">
+                      <Link href={`/goals/${goal.id}/edit`} className="inline-flex rounded-xl bg-[#294d3b] px-4 py-2 text-sm font-medium text-white hover:bg-[#354e3b]">Edit Goal<span className="sr-only">: {goal.name}</span></Link>
                         <GoalStatusButton key={`${goal.id}-${goal.is_active}`} goalId={goal.id} goalName={goal.name} isActive={goal.is_active} />
                       </div>
                     </article>

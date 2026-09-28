@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast-provider";
 
 type ProjectStatus = "active" | "completed" | "archived";
 const actions: Record<ProjectStatus, { label: string; target: ProjectStatus }[]> = {
@@ -23,6 +24,7 @@ export default function ProjectStatusActions({ projectId, projectName, status }:
   status: ProjectStatus;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const busy = useRef(false);
   const [pending, setPending] = useState<ProjectStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function ProjectStatusActions({ projectId, projectName, status }:
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         setError("Please sign in again to change this project.");
+        showToast("Please sign in again to change this project.", "error");
         return;
       }
       const { error: updateError } = await supabase.from("projects")
@@ -48,11 +51,15 @@ export default function ProjectStatusActions({ projectId, projectName, status }:
         .single();
       if (updateError) {
         setError("Could not change this project. Refresh and try again.");
+        showToast("Could not update this project.", "error");
         return;
       }
+      const actionLabel = target === "completed" ? "completed" : target === "archived" ? "archived" : "reopened";
+      showToast(`${projectName} ${actionLabel}.`);
       router.refresh();
     } catch {
       setError("Could not connect. Please try again.");
+      showToast("Could not connect. Please try again.", "error");
     } finally {
       busy.current = false;
       setPending(null);

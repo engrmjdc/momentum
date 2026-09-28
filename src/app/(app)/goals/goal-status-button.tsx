@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast-provider";
 
 export default function GoalStatusButton({
   goalId, goalName, isActive,
@@ -12,6 +13,7 @@ export default function GoalStatusButton({
   isActive: boolean;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const busy = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +28,7 @@ export default function GoalStatusButton({
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         setError("Please sign in again to change this goal.");
+        showToast("Please sign in again to change this goal.", "error");
         return;
       }
       const { error: updateError } = await supabase
@@ -38,11 +41,14 @@ export default function GoalStatusButton({
         .single();
       if (updateError) {
         setError("Could not change this goal. Refresh and try again.");
+        showToast("Could not update this goal.", "error");
         return;
       }
+      showToast(`${goalName} ${isActive ? "paused" : "resumed"}.`);
       router.refresh();
     } catch {
       setError("Could not connect. Please try again.");
+      showToast("Could not connect. Please try again.", "error");
     } finally {
       busy.current = false;
       setSaving(false);

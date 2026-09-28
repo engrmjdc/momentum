@@ -5,10 +5,13 @@ import BetaWelcome from "./beta-welcome";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { ToastProvider } from "./toast-provider";
+import TodoReminderWatcher from "./todo-reminder-watcher";
 
 type AppShellProps = {
   children: React.ReactNode;
   displayName: string;
+  timezone: string;
 };
 
 const navigation = [
@@ -16,6 +19,11 @@ const navigation = [
     name: "Today",
     href: "/today",
     icon: "☀️",
+  },
+  {
+    name: "To Do",
+    href: "/todos",
+    icon: "✓",
   },
   {
     name: "Goals",
@@ -28,6 +36,11 @@ const navigation = [
     icon: "📁",
   },
   {
+    name: "Calendar",
+    href: "/calendar",
+    icon: "🗓️",
+  },
+  {
     name: "Progress",
     href: "/progress",
     icon: "📈",
@@ -37,6 +50,7 @@ const navigation = [
 export default function AppShell({
   children,
   displayName,
+  timezone,
 }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -95,35 +109,35 @@ export default function AppShell({
     "User";
 
   return (
+    <ToastProvider>
+    <TodoReminderWatcher timezone={timezone} />
     <div className="min-h-screen bg-[#f5f6ef]">
 
       {/* DESKTOP SIDEBAR */}
 
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-[#dfe6d9] bg-[#fcfdf8] lg:flex lg:flex-col">
+      <aside className="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-64 overflow-hidden border-r border-[#d8e2d5] bg-gradient-to-b from-[#fcfdf8] via-[#f9fbf5] to-[#f3f7ee] lg:flex lg:flex-col">
+
+        <div aria-hidden="true" className="pointer-events-none absolute -right-16 top-24 h-44 w-44 rounded-full bg-[#e6edda]/70 blur-2xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -left-20 bottom-36 h-48 w-48 rounded-full bg-[#dfe9e1]/55 blur-3xl" />
 
         {/* LOGO */}
 
-        <div className="flex h-20 items-center border-b border-gray-100 px-7">
+        <div className="relative z-10 flex h-24 items-center border-b border-[#e4eae0] px-6">
           <Link
             href="/today"
-            className="flex items-center gap-2 text-lg font-bold text-[#45634c]"
+            className="group flex items-center gap-3 text-lg font-bold text-[#36523d]"
           >
-            <span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8e3d2] bg-white text-xl shadow-[0_8px_22px_-15px_#294d3b80] transition group-hover:-rotate-3 group-hover:scale-105">
               🌱
             </span>
-
-            <span>
-              Momentum
-            </span>
+            <span><span className="block">Momentum</span><span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.16em] text-[#83917e]">Make today count</span></span>
           </Link>
         </div>
 
         {/* NAVIGATION */}
 
-        <nav aria-label="Workspace" className="flex-1 px-4 py-6">
-          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#74816f]">
-            Workspace
-          </p>
+        <nav aria-label="Workspace" className="relative z-10 flex-1 px-4 py-6">
+          <div className="mb-4 flex items-center gap-3 px-3"><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#74816f]">Workspace</p><span className="h-px flex-1 bg-[#dfe6d9]" /></div>
 
           <div className="space-y-1">
             {navigation.map((item) => {
@@ -138,13 +152,13 @@ export default function AppShell({
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                  className={`group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
                     active
                       ? "bg-[#294d3b] text-[#f7f8ec] shadow-[0_6px_16px_-8px_#294d3b80]"
                       : "text-[#61715f] hover:bg-[#edf2e5] hover:text-[#294d3b]"
                   }`}
                 >
-                  <span className="flex h-7 w-7 items-center justify-center text-base">
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-xl text-base transition ${active ? "bg-white/12" : "bg-[#eef3e8] group-hover:bg-white"}`}>
                     {item.icon}
                   </span>
 
@@ -155,17 +169,19 @@ export default function AppShell({
               );
             })}
           </div>
-          <div className="mt-8 rounded-2xl border border-[#dde6d2] bg-[#edf2e5] p-4">
-            <span aria-hidden="true" className="text-xl">🌿</span>
-            <p className="mt-3 text-sm font-semibold text-[#294d3b]">Make room for progress.</p>
-            <p className="mt-2 text-xs leading-5 text-[#61715f]">A few focused minutes can be a good place to start.</p>
-            <Link href="/focus" className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#294d3b] underline decoration-[#a6ba92] underline-offset-4">Find your focus <span aria-hidden="true">↗</span></Link>
+          <div className="relative mt-8 overflow-hidden rounded-3xl border border-[#d2dfca] bg-gradient-to-br from-[#eaf1df] to-[#f5f8ed] p-4 shadow-[0_12px_28px_-22px_#294d3b80]">
+            <div aria-hidden="true" className="absolute -right-7 -top-7 h-20 w-20 rounded-full bg-white/65" />
+            <div aria-hidden="true" className="absolute -bottom-9 -left-7 h-20 w-20 rounded-full bg-[#dce8d3]" />
+            <div className="relative"><span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">🌿</span>
+            <p className="mt-3 text-sm font-semibold text-[#294d3b]">A little progress counts.</p>
+            <p className="mt-2 text-xs leading-5 text-[#61715f]">Give one meaningful thing your full attention.</p>
+            <Link href="/focus" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#45634c] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#294d3b]">Start focusing <span aria-hidden="true">→</span></Link></div>
           </div>
         </nav>
 
         {/* BOTTOM */}
 
-        <div className="border-t border-gray-100 p-4">
+        <div className="relative z-10 border-t border-[#e1e8dd] bg-white/45 p-4 backdrop-blur-sm">
           <Link
             href="/settings"
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
@@ -183,23 +199,6 @@ export default function AppShell({
             Settings
           </Link>
 
-          <div className="mt-3 flex items-center gap-3 rounded-xl bg-[#f5f6ef] p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe9e1] text-sm font-semibold text-[#45634c]">
-              {firstName
-                .charAt(0)
-                .toUpperCase()}
-            </div>
-
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-700">
-                {displayName}
-              </p>
-
-              <p className="text-xs text-[#74816f]">
-                Momentum
-              </p>
-            </div>
-          </div>
           {signOutAction}
         </div>
       </aside>
@@ -244,40 +243,6 @@ export default function AppShell({
       {mobileMenuOpen && (
         <div className="fixed inset-x-0 top-16 z-50 border-b border-[#dfe6d9] bg-white p-4 shadow-lg lg:hidden">
           <nav className="space-y-1">
-            {navigation.map((item) => {
-              const active =
-                pathname === item.href ||
-                pathname.startsWith(
-                  `${item.href}/`
-                );
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  onClick={() =>
-                    setMobileMenuOpen(
-                      false
-                    )
-                  }
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium ${
-                    active
-                      ? "bg-[#294d3b] text-[#f7f8ec] shadow-[0_6px_16px_-8px_#294d3b80]"
-                      : "text-gray-600"
-                  }`}
-                >
-                  <span>
-                    {item.icon}
-                  </span>
-
-                  {item.name}
-                </Link>
-              );
-            })}
-
-            <div className="my-2 border-t border-gray-100" />
-
             <Link
               href="/settings"
               onClick={() =>
@@ -318,10 +283,29 @@ export default function AppShell({
 
       {/* PAGE CONTENT */}
 
-      <div className="lg:pl-64">
+      <div className="workspace-surface relative pb-24 lg:pb-0 lg:pl-64">
+        <div aria-hidden="true" className="workspace-decor pointer-events-none fixed inset-0 -z-0 lg:left-64" />
+        <div className="relative z-[1]">
         <BetaWelcome />
         {children}
+        </div>
       </div>
+
+      {/* MOBILE BOTTOM NAVIGATION */}
+
+      <nav aria-label="Workspace" className="fixed inset-x-2 bottom-2 z-40 grid grid-cols-6 rounded-2xl border border-[#d9e2d5] bg-[#fcfdf8]/95 p-1 shadow-[0_16px_40px_-16px_#294d3b80] backdrop-blur lg:hidden">
+        {navigation.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          return (
+            <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}
+              className={`relative flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-2 text-[9px] font-semibold transition active:scale-95 ${active ? "bg-[#294d3b] text-white shadow-sm" : "text-[#61715f] hover:bg-[#edf2e5]"}`}>
+              <span aria-hidden="true" className="text-base leading-none">{item.icon}</span>
+              <span className="truncate">{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
+    </ToastProvider>
   );
 }

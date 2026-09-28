@@ -27,6 +27,7 @@ export default async function AppLayout({
   return (
     <AppShell
       displayName={displayName}
+      timezone={profile?.timezone || "Asia/Manila"}
     >
       {children}
     </AppShell>

@@ -22,3 +22,101 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+.workspace-decor {
+  background:
+    radial-gradient(circle at 88% 8%, rgba(218, 229, 201, 0.55), transparent 25rem),
+    radial-gradient(circle at 8% 72%, rgba(218, 232, 220, 0.5), transparent 24rem),
+    linear-gradient(135deg, rgba(255,255,255,0.32) 0%, transparent 42%);
+}
+
+.workspace-surface main {
+  background-color: transparent;
+}
+
+html.dark {
+  --background: #101712;
+  --foreground: #eef3ea;
+}
+
+html.dark body,
+html.dark .workspace-surface {
+  background: #101712;
+  color: #eef3ea;
+}
+
+html.dark .workspace-decor {
+  background:
+    radial-gradient(circle at 88% 8%, rgba(62, 91, 68, 0.32), transparent 26rem),
+    radial-gradient(circle at 8% 72%, rgba(44, 73, 55, 0.28), transparent 25rem),
+    linear-gradient(135deg, rgba(255,255,255,0.018), transparent 42%);
+}
+
+html.dark .workspace-surface main {
+  background-color: transparent !important;
+}
+
+html.dark .app-sidebar {
+  background: linear-gradient(to bottom, #151f18, #111a14 56%, #101712);
+  border-color: #2b3a2e;
+}
+
+html.dark :is(
+  [class~="bg-white"], [class~="bg-white/95"], [class~="bg-white/80"],
+  [class~="bg-[#fcfdf8]"], [class~="bg-[#fafbf8]"], [class~="bg-[#fafbf7]"]
+) { background-color: #18221b !important; }
+
+html.dark :is(
+  [class~="bg-[#f5f6ef]"], [class~="bg-[#f5f7f1]"], [class~="bg-[#f7f9f6]"],
+  [class~="bg-[#f8faf4]"], [class~="bg-[#f8faf5]"], [class~="bg-[#f7faf4]"],
+  [class~="bg-[#f3f4f0]"], [class~="bg-[#f2f5f2]"], [class~="bg-[#f2f4ef]"],
+  [class~="bg-[#f4f7f4]"], [class~="bg-[#f5f8f1]"], [class~="bg-gray-50"],
+  [class~="bg-gray-100"]
+) { background-color: #131d16 !important; }
+
+html.dark :is(
+  [class~="bg-[#edf3ee]"], [class~="bg-[#edf3e7]"], [class~="bg-[#edf2e5]"],
+  [class~="bg-[#eef4ef]"], [class~="bg-[#eef3e8]"], [class~="bg-[#eef2e9]"],
+  [class~="bg-[#f0f4e9]"], [class~="bg-[#f1f5ec]"], [class~="bg-[#f2f6ed]"],
+  [class~="bg-[#f2f7f3]"], [class~="bg-[#eaf0df]"], [class~="bg-[#e7f1e5]"]
+) { background-color: #1d2c22 !important; }
+
+html.dark :is(
+  [class~="text-gray-900"], [class~="text-gray-800"], [class~="text-gray-700"],
+  [class~="text-[#171717]"], [class~="text-[#233b2c]"], [class~="text-[#24382b]"],
+  [class~="text-[#26382c]"], [class~="text-[#294d3b]"], [class~="text-[#314036]"],
+  [class~="text-[#36523d]"], [class~="text-[#3f5f45]"], [class~="text-[#455448]"]
+) { color: #edf3e9 !important; }
+
+html.dark :is(
+  [class~="text-gray-400"], [class~="text-gray-500"], [class~="text-gray-600"],
+  [class~="text-[#61715f]"], [class~="text-[#6c8772]"], [class~="text-[#74816f]"],
+  [class~="text-[#7f8b80]"], [class~="text-[#83917e]"]
+) { color: #a9b7a8 !important; }
+
+html.dark :is(
+  [class~="text-[#45634c]"], [class~="text-[#52735a]"], [class~="text-[#365d3e]"],
+  [class~="text-[#617461]"]
+) { color: #b8cfb9 !important; }
+
+html.dark [class*="bg-gradient-to-"] {
+  background-image: linear-gradient(135deg, #1b2920, #152019) !important;
+}
+
+html.dark :is(
+  [class~="border-gray-100"], [class~="border-gray-200"], [class~="border-gray-300"],
+  [class~="border-[#dfe6d9]"], [class~="border-[#dce7de]"], [class~="border-[#d9e2d5]"],
+  [class~="border-[#e1e8dd]"], [class~="border-[#e3e9df]"], [class~="border-[#e3e9e3]"],
+  [class~="border-[#edf0e9]"], [class~="border-[#cbd8c7]"], [class~="border-[#d4dfd2]"]
+) { border-color: #334338 !important; }
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  color: #edf3e9;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #7f9082;
+}

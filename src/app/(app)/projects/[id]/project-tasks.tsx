@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/toast-provider";
 
 export type ProjectTask = {
   id: string;
@@ -17,6 +18,7 @@ export default function ProjectTasks({ projectId, tasks, editable }: {
   editable: boolean;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const busy = useRef(false);
   const [saving, setSaving] = useState(false);
   const [refreshing, startTransition] = useTransition();
@@ -41,6 +43,7 @@ export default function ProjectTasks({ projectId, tasks, editable }: {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         setError("Please sign in again to change tasks.");
+        showToast("Please sign in again to change tasks.", "error");
         return false;
       }
       // Recheck project ownership and state before changing tasks.
@@ -48,6 +51,7 @@ export default function ProjectTasks({ projectId, tasks, editable }: {
         .select("status").eq("id", projectId).eq("user_id", user.id).single();
       if (projectError || project.status !== "active") {
         setError("This project is unavailable or no longer active. Refresh the page.");
+        showToast("This project is no longer available for changes.", "error");
         return false;
       }
 
@@ -66,14 +70,18 @@ export default function ProjectTasks({ projectId, tasks, editable }: {
 
       if (result.error) {
         setError("Could not save this task change. Refresh and try again.");
+        showToast("Could not save that task change.", "error");
         return false;
       }
       setEditingId(null);
       setDeletingId(null);
+      const successMessage = operation === "add" ? "Task added." : operation === "rename" ? "Task renamed." : operation === "delete" ? "Task removed." : task?.is_completed ? "Task reopened." : "Task completed.";
+      showToast(successMessage);
       startTransition(() => router.refresh());
       return true;
     } catch {
       setError("Could not connect. Please try again.");
+      showToast("Could not connect. Please try again.", "error");
       return false;
     } finally {
       busy.current = false;
