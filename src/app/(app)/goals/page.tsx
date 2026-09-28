@@ -2,6 +2,7 @@ import Link from "next/link";
 import GoalStatusButton from "./goal-status-button";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAppSession } from "@/lib/app-session";
 import { getLocalWeekRange } from "@/lib/date-utils";
 
 type Goal = {
@@ -23,14 +24,10 @@ const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default async function GoalsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile: cachedProfile } = await getAppSession();
   if (!user) redirect("/login");
 
-  const profileResult = await supabase
-    .from("profiles")
-    .select("timezone")
-    .eq("id", user.id)
-    .single();
+  const profileResult = { data: cachedProfile, error: null };
 
   const timezone = profileResult.data?.timezone || "Asia/Manila";
   const week = getLocalWeekRange(new Date(), timezone);

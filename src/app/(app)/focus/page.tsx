@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/app-session";
 import FocusTimer from "./focus-timer";
 
 type Goal = {
@@ -18,9 +19,7 @@ type FocusPreference = {
 export default async function FocusPage() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login");

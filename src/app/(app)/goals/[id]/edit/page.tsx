@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/app-session";
 import EditGoalForm, { type EditableGoal } from "./edit-goal-form";
 
 export default async function EditGoalPage({
@@ -9,7 +10,7 @@ export default async function EditGoalPage({
   params: Promise<{ id: string }>;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const { id } = await params;

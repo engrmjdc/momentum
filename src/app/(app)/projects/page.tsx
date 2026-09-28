@@ -2,6 +2,7 @@ import Link from "next/link";
 import ProjectStatusActions from "./project-status-actions";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAppSession } from "@/lib/app-session";
 import { getLocalDateKey } from "@/lib/date-utils";
 
 type Project = {
@@ -16,21 +17,20 @@ type Project = {
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile: cachedProfile } = await getAppSession();
   if (!user) redirect("/login");
 
-  const [projectsResult, goalsResult, profileResult] = await Promise.all([
+  const [projectsResult, goalsResult] = await Promise.all([
     supabase.from("projects")
       .select("id, name, description, status, due_date, goal_id, project_tasks (id, is_completed)")
       .eq("user_id", user.id).order("created_at", { ascending: false }),
     supabase.from("goals").select("id, name, is_active").eq("user_id", user.id),
-    supabase.from("profiles").select("timezone").eq("id", user.id).single(),
   ]);
-  const error = projectsResult.error || goalsResult.error || profileResult.error;
+  const error = projectsResult.error || goalsResult.error;
   if (error) console.error("Unable to load projects:", error);
   const projects = (projectsResult.data ?? []) as Project[];
   const goals = new Map((goalsResult.data ?? []).map((goal) => [goal.id, goal]));
-  const today = getLocalDateKey(new Date(), profileResult.data?.timezone || "Asia/Manila");
+  const today = getLocalDateKey(new Date(), cachedProfile?.timezone || "Asia/Manila");
   const groups = [
     { status: "active", name: "Active Projects", empty: "No active projects yet", hint: "Create a project to start turning an idea into something you can finish." },
     { status: "completed", name: "Completed Projects", empty: "No completed projects yet", hint: "Finished projects will appear here." },

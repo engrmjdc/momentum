@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import GoalCompletionButton from "./goal-completion-button";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAppSession } from "@/lib/app-session";
 
 import {
   formatLocalDate,
@@ -86,9 +87,7 @@ export default async function TodayPage() {
    * AUTH
    */
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile: cachedProfile } = await getAppSession();
 
   if (!user) {
     redirect("/login");
@@ -98,24 +97,7 @@ export default async function TodayPage() {
    * PROFILE
    */
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select(`
-      display_name,
-      timezone
-    `)
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    console.error(
-      "Unable to load profile:",
-      profileError
-    );
-  }
+  const profile = cachedProfile;
 
   const timezone =
     profile?.timezone || "Asia/Manila";
@@ -165,269 +147,33 @@ export default async function TodayPage() {
    * LOAD DASHBOARD DATA
    */
 
-  const [
-    goalsResult,
-    preferenceResult,
-    weeklyFocusResult,
-    weeklyCompletionResult,
-    todayFocusResult,
-    todayCompletionResult,
-    activityFocusResult,
-    activityCompletionResult,
-  ] = await Promise.all([
-    /*
-     * ACTIVE GOALS
-     */
-
-    supabase
-      .from("goals")
-      .select(`
-        id,
-        name,
-        icon,
-        measurement_type,
-        weekly_target,
-        default_duration_minutes,
-        goal_schedules (
-          day_of_week,
-          duration_minutes
-        )
-      `)
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .order(
-        "created_at",
-        {
-          ascending: true,
-        }
-      ),
-
-    /*
-     * FOCUS PREFERENCES
-     */
-
-    supabase
-      .from("focus_preferences")
-      .select(`
-        preset,
-        custom_focus_minutes,
-        custom_break_minutes
-      `)
-      .eq("user_id", user.id)
-      .maybeSingle(),
-
-    /*
-     * WEEKLY FOCUS
-     */
-
-    supabase
-      .from("focus_sessions")
-      .select(`
-        goal_id,
-        actual_duration_seconds,
-        status,
-        completed_at
-      `)
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .gte(
-        "completed_at",
-        weekRange.start
-      )
-      .lt(
-        "completed_at",
-        weekRange.end
-      ),
-
-    /*
-     * WEEKLY COUNT COMPLETIONS
-     */
-
-    supabase
-      .from("goal_completions")
-      .select(`
-        goal_id,
-        quantity,
-        completed_at
-      `)
-      .eq("user_id", user.id)
-      .gte(
-        "completed_at",
-        weekRange.start
-      )
-      .lt(
-        "completed_at",
-        weekRange.end
-      ),
-
-    /*
-     * TODAY FOCUS
-     */
-
-    supabase
-      .from("focus_sessions")
-      .select(`
-        goal_id,
-        actual_duration_seconds,
-        status,
-        completed_at
-      `)
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .gte(
-        "completed_at",
-        dayRange.start
-      )
-      .lt(
-        "completed_at",
-        dayRange.end
-      ),
-
-    /*
-     * TODAY COUNT COMPLETIONS
-     */
-
-    supabase
-      .from("goal_completions")
-      .select(`
-        goal_id,
-        quantity,
-        completed_at
-      `)
-      .eq("user_id", user.id)
-      .gte(
-        "completed_at",
-        dayRange.start
-      )
-      .lt(
-        "completed_at",
-        dayRange.end
-      ),
-
-    /*
-     * FOCUS ACTIVITY HISTORY
-     */
-
-    supabase
-      .from("focus_sessions")
-      .select(`
-        completed_at
-      `)
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .gte(
-        "completed_at",
-        activityHistoryStart
-      )
-      .not(
-        "completed_at",
-        "is",
-        null
-      ),
-
-    /*
-     * COMPLETION ACTIVITY HISTORY
-     */
-
-    supabase
-      .from("goal_completions")
-      .select(`
-        completed_at
-      `)
-      .eq("user_id", user.id)
-      .gte(
-        "completed_at",
-        activityHistoryStart
-      ),
+  const [goalsResult, preferenceResult, focusHistoryResult, completionHistoryResult] = await Promise.all([
+    supabase.from("goals").select(`id, name, icon, measurement_type, weekly_target,
+      default_duration_minutes, goal_schedules (day_of_week, duration_minutes)`)
+      .eq("user_id", user.id).eq("is_active", true).order("created_at", { ascending: true }),
+    supabase.from("focus_preferences").select(`preset, custom_focus_minutes, custom_break_minutes`)
+      .eq("user_id", user.id).maybeSingle(),
+    supabase.from("focus_sessions").select(`goal_id, actual_duration_seconds, status, completed_at`)
+      .eq("user_id", user.id).eq("status", "completed")
+      .gte("completed_at", activityHistoryStart).not("completed_at", "is", null),
+    supabase.from("goal_completions").select(`goal_id, quantity, completed_at`)
+      .eq("user_id", user.id).gte("completed_at", activityHistoryStart),
   ]);
 
-  /*
-   * QUERY ERRORS
-   */
+  const queryError = goalsResult.error || preferenceResult.error ||
+    focusHistoryResult.error || completionHistoryResult.error;
+  if (queryError) console.error("Unable to load Today data:", queryError);
 
-  if (goalsResult.error) {
-    console.error(
-      "Unable to load goals:",
-      goalsResult.error
-    );
-  }
-
-  if (preferenceResult.error) {
-    console.error(
-      "Unable to load focus preferences:",
-      preferenceResult.error
-    );
-  }
-
-  if (weeklyFocusResult.error) {
-    console.error(
-      "Unable to load weekly focus sessions:",
-      weeklyFocusResult.error
-    );
-  }
-
-  if (weeklyCompletionResult.error) {
-    console.error(
-      "Unable to load weekly goal completions:",
-      weeklyCompletionResult.error
-    );
-  }
-
-  if (todayFocusResult.error) {
-    console.error(
-      "Unable to load today's focus sessions:",
-      todayFocusResult.error
-    );
-  }
-
-  if (todayCompletionResult.error) {
-    console.error(
-      "Unable to load today's goal completions:",
-      todayCompletionResult.error
-    );
-  }
-
-  if (activityFocusResult.error) {
-    console.error(
-      "Unable to load focus activity history:",
-      activityFocusResult.error
-    );
-  }
-
-  if (activityCompletionResult.error) {
-    console.error(
-      "Unable to load completion activity history:",
-      activityCompletionResult.error
-    );
-  }
-
-  /*
-   * NORMALIZED DATA
-   */
-
-  const goals =
-    (goalsResult.data ?? []) as Goal[];
-
-  const focusPreference =
-    preferenceResult.data as
-      | FocusPreference
-      | null;
-
-  const weeklyFocusSessions =
-    (weeklyFocusResult.data ??
-      []) as FocusSession[];
-
-  const weeklyGoalCompletions =
-    (weeklyCompletionResult.data ??
-      []) as GoalCompletion[];
-
-  const todayFocusSessions =
-    (todayFocusResult.data ??
-      []) as FocusSession[];
-
-  const todayGoalCompletions =
-    (todayCompletionResult.data ??
-      []) as GoalCompletion[];
+  const goals = (goalsResult.data ?? []) as Goal[];
+  const focusPreference = preferenceResult.data as FocusPreference | null;
+  const focusHistory = (focusHistoryResult.data ?? []) as FocusSession[];
+  const completionHistory = (completionHistoryResult.data ?? []) as GoalCompletion[];
+  const inRange = (value: string | null, start: string, end: string) =>
+    value !== null && value >= start && value < end;
+  const weeklyFocusSessions = focusHistory.filter((row) => inRange(row.completed_at, weekRange.start, weekRange.end));
+  const weeklyGoalCompletions = completionHistory.filter((row) => inRange(row.completed_at, weekRange.start, weekRange.end));
+  const todayFocusSessions = focusHistory.filter((row) => inRange(row.completed_at, dayRange.start, dayRange.end));
+  const todayGoalCompletions = completionHistory.filter((row) => inRange(row.completed_at, dayRange.start, dayRange.end));
 
   /*
    * HEADER
@@ -758,7 +504,7 @@ export default async function TodayPage() {
    */
 
   const activeDateKeys = [
-    ...(activityFocusResult.data ?? [])
+    ...focusHistory
       .filter(
         (session) =>
           session.completed_at !==
@@ -773,8 +519,7 @@ export default async function TodayPage() {
         )
       ),
 
-    ...(activityCompletionResult.data ??
-      []).map((completion) =>
+    ...completionHistory.map((completion) =>
       getLocalDateKey(
         new Date(
           completion.completed_at

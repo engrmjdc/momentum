@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAppSession } from "@/lib/app-session";
 import { getLocalDateKey, getLocalDayOffsetStart, getLocalWeekRange } from "@/lib/date-utils";
 import { buildActivityCalendar, buildActivityCounts } from "@/lib/activity";
 import { buildActivityStrip, calculateStreaks } from "@/lib/streaks";
@@ -25,11 +26,10 @@ async function loadHistory<T>(fetchPage: (from: number, to: number) => PromiseLi
 
 export default async function ProgressPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, profile: cachedProfile } = await getAppSession();
   if (!user) redirect("/login");
 
-  const profileResult = await supabase.from("profiles").select("timezone")
-    .eq("id", user.id).single();
+  const profileResult = { data: cachedProfile };
   const timezone = profileResult.data?.timezone || "Asia/Manila";
   const now = new Date();
   const today = getLocalDateKey(now, timezone);
@@ -39,9 +39,8 @@ export default async function ProgressPage() {
   const week = getLocalWeekRange(now, timezone);
   let focus: FocusSession[] = [];
   let completions: Completion[] = [];
-  let failed = Boolean(profileResult.error);
+  let failed = false;
   try {
-    if (profileResult.error) throw new Error(profileResult.error.message);
     [focus, completions] = await Promise.all([
       loadHistory<FocusSession>((from, to) => supabase.from("focus_sessions")
         .select("completed_at, actual_duration_seconds")
@@ -144,3 +143,4 @@ export default async function ProgressPage() {
     </main>
   );
 }
+

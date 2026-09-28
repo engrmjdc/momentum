@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/app-session";
 import CreateProjectForm from "./create-project-form";
 
 export default async function CreateProjectPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { data: goals, error } = await supabase.from("goals")
     .select("id, name, icon, is_active").eq("user_id", user.id)

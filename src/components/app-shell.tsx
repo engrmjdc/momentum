@@ -3,7 +3,7 @@
 import Link from "next/link";
 import BetaWelcome from "./beta-welcome";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type AppShellProps = {
@@ -44,6 +44,11 @@ export default function AppShell({
   const signingOut = useRef(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    navigation.forEach((item) => router.prefetch(item.href));
+    router.prefetch("/settings");
+  }, [router]);
 
   async function handleSignOut() {
     if (signingOut.current) return;
