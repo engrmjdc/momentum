@@ -8,7 +8,7 @@ export default async function CreateProjectPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: goals, error } = await supabase.from("goals")
-    .select("id, name, is_active").eq("user_id", user.id)
+    .select("id, name, icon, is_active").eq("user_id", user.id)
     .order("created_at", { ascending: true });
   if (error) {
     console.error("Unable to load project goal choices:", error);

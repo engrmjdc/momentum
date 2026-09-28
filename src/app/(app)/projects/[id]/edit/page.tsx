@@ -16,7 +16,7 @@ export default async function EditProjectPage({ params }: {
     supabase.from("projects")
       .select("id, name, description, goal_id, due_date")
       .eq("id", id).eq("user_id", user.id).maybeSingle(),
-    supabase.from("goals").select("id, name, is_active")
+    supabase.from("goals").select("id, name, icon, is_active")
       .eq("user_id", user.id).order("created_at", { ascending: true }),
   ]);
   const error = projectResult.error || goalsResult.error;

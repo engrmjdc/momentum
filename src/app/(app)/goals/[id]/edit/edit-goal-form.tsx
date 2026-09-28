@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import DeleteItemButton from "@/components/delete-item-button";
 import GoalIconPicker from "@/components/goal-icon-picker";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
@@ -72,7 +73,6 @@ export default function EditGoalForm({ goal }: { goal: EditableGoal }) {
         return;
       }
       router.replace("/goals");
-      router.refresh();
     } catch {
       setError("Could not connect. Please try again.");
     } finally {
@@ -151,6 +151,11 @@ export default function EditGoalForm({ goal }: { goal: EditableGoal }) {
             {!saving && <Link href="/goals" className="rounded-xl px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</Link>}
           </div>
         </form>
+
+        <section className="mt-8 rounded-3xl border border-red-100 bg-white p-6 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-8">
+          <div><h2 className="font-semibold text-[#233b2c]">Delete goal</h2><p className="mt-2 text-sm leading-6 text-gray-500">Permanently remove this goal when you no longer need it.</p></div>
+          <div className="mt-5 shrink-0 sm:mt-0"><DeleteItemButton kind="goal" id={goal.id} name={goal.name} /></div>
+        </section>
       </div>
     </main>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import DeleteItemButton from "@/components/delete-item-button";
+import MomentumSelect from "@/components/momentum-select";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -17,7 +19,7 @@ export type EditableProject = {
 
 export default function EditProjectForm({ goals, project }: {
   project: EditableProject;
-  goals: { id: string; name: string; is_active: boolean }[];
+  goals: { id: string; name: string; icon: string | null; is_active: boolean }[];
 }) {
   const router = useRouter();
   const busy = useRef(false);
@@ -59,7 +61,6 @@ export default function EditProjectForm({ goals, project }: {
         return;
       }
       router.replace("/projects");
-      router.refresh();
     } catch {
       setError("Could not connect. Please try again.");
     } finally {
@@ -87,10 +88,9 @@ export default function EditProjectForm({ goals, project }: {
             </div>
             <div>
               <label htmlFor="goal_id" className="text-sm font-medium">Related goal</label>
-              <select id="goal_id" name="goal_id" defaultValue={project.goal_id ?? ""} aria-describedby="goal-help" className={inputClass}>
-                <option value="">No related goal</option>
-                {goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}{goal.is_active ? "" : " (paused)"}</option>)}
-              </select>
+              <MomentumSelect id="goal_id" name="goal_id" defaultValue={project.goal_id ?? ""} describedBy="goal-help"
+                placeholder="No related goal" disabled={saving}
+                options={goals.map((goal) => ({ value: goal.id, label: goal.name, icon: goal.icon, detail: goal.is_active ? undefined : "Paused" }))} />
               <p id="goal-help" className="mt-2 text-xs text-gray-500">Optional. Linking a project does not change the goal’s weekly progress.</p>
             </div>
             <div>
@@ -105,6 +105,11 @@ export default function EditProjectForm({ goals, project }: {
             {!saving && <Link href="/projects" className="rounded-xl px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</Link>}
           </div>
         </form>
+
+        <section className="mt-8 rounded-3xl border border-red-100 bg-white p-6 shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-8">
+          <div><h2 className="font-semibold text-[#233b2c]">Delete project</h2><p className="mt-2 text-sm leading-6 text-gray-500">Permanently remove this project and all of its tasks.</p></div>
+          <div className="mt-5 shrink-0 sm:mt-0"><DeleteItemButton kind="project" id={project.id} name={project.name} /></div>
+        </section>
       </div>
     </main>
   );

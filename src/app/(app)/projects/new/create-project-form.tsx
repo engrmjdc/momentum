@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import MomentumSelect from "@/components/momentum-select";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -8,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 const inputClass = "mt-2 w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-[#45634c] focus:outline-none focus:ring-2 focus:ring-[#dce7de]";
 
 export default function CreateProjectForm({ goals }: {
-  goals: { id: string; name: string; is_active: boolean }[];
+  goals: { id: string; name: string; icon: string | null; is_active: boolean }[];
 }) {
   const router = useRouter();
   const busy = useRef(false);
@@ -50,7 +51,6 @@ export default function CreateProjectForm({ goals }: {
         return;
       }
       router.replace("/projects");
-      router.refresh();
     } catch {
       setError("Could not connect. Please try again.");
     } finally {
@@ -78,10 +78,9 @@ export default function CreateProjectForm({ goals }: {
             </div>
             <div>
               <label htmlFor="goal_id" className="text-sm font-medium">Related goal</label>
-              <select id="goal_id" name="goal_id" defaultValue="" aria-describedby="goal-help" className={inputClass}>
-                <option value="">No related goal</option>
-                {goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}{goal.is_active ? "" : " (paused)"}</option>)}
-              </select>
+              <MomentumSelect id="goal_id" name="goal_id" defaultValue={""} describedBy="goal-help"
+                placeholder="No related goal" disabled={saving}
+                options={goals.map((goal) => ({ value: goal.id, label: goal.name, icon: goal.icon, detail: goal.is_active ? undefined : "Paused" }))} />
               <p id="goal-help" className="mt-2 text-xs text-gray-500">Optional. Linking a project does not change the goal’s weekly progress.</p>
             </div>
             <div>

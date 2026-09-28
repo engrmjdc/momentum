@@ -57,7 +57,6 @@ export default function AppShell({
       if (error) throw error;
       setMobileMenuOpen(false);
       router.replace("/login");
-      router.refresh();
     } catch {
       setSignOutError("Could not sign out. Please try again.");
     } finally {

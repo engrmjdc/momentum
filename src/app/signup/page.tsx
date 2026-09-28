@@ -49,7 +49,6 @@ export default function SignupPage() {
 
     if (data.session) {
       router.push("/onboarding");
-      router.refresh();
       return;
     }
 

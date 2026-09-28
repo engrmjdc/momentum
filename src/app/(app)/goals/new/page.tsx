@@ -60,7 +60,6 @@ export default function CreateGoalPage() {
         return;
       }
       router.replace("/goals");
-      router.refresh();
     } catch {
       setError("Could not connect. Please try again.");
     } finally {

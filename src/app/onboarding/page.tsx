@@ -346,7 +346,6 @@ export default function OnboardingPage() {
        * Only redirect after the database transaction succeeds.
        */
       router.replace("/today");
-      router.refresh();
     } catch (error) {
       console.error("Failed to complete onboarding:", error);
 

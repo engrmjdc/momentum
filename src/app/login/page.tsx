@@ -50,7 +50,6 @@ function LoginForm() {
       }
 
       router.replace("/today");
-      router.refresh();
     } catch (error) {
       console.error("Login failed:", error);
 

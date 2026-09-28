@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import MomentumSelect from "@/components/momentum-select";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -537,33 +538,9 @@ export default function FocusTimer({
                 What are you focusing on?
               </label>
 
-              <select
-                id="focus-goal"
-                value={selectedGoalId}
-                onChange={(event) => {
-                  setSelectedGoalId(
-                    event.target.value
-                  );
-
-                  setError(null);
-                }}
-                disabled={isSaving}
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-gray-900 outline-none transition focus:border-[#52735a] focus:ring-2 focus:ring-[#52735a]/15 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="">
-                  Choose a goal...
-                </option>
-
-                {goals.map((goal) => (
-                  <option
-                    key={goal.id}
-                    value={goal.id}
-                  >
-                    {goal.icon || "🎯"}{" "}
-                    {goal.name}
-                  </option>
-                ))}
-              </select>
+              <MomentumSelect id="focus-goal" value={selectedGoalId} placeholder="Choose a goal…"
+                disabled={isSaving} options={goals.map((goal) => ({ value: goal.id, label: goal.name, icon: goal.icon }))}
+                onChange={(nextValue) => { setSelectedGoalId(nextValue); setError(null); }} />
             </div>
           )}
 
