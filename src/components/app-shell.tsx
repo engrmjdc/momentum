@@ -64,6 +64,21 @@ export default function AppShell({
     router.prefetch("/settings");
   }, [router]);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeMenu = () => setMobileMenuOpen(false);
+    window.addEventListener("scroll", closeMenu, { passive: true });
+    window.addEventListener("resize", closeMenu);
+    return () => {
+      window.removeEventListener("scroll", closeMenu);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [mobileMenuOpen]);
+
   async function handleSignOut() {
     if (signingOut.current) return;
     signingOut.current = true;
@@ -237,6 +252,8 @@ export default function AppShell({
       {/* MOBILE MENU */}
 
       {mobileMenuOpen && (
+        <>
+        <button type="button" aria-label="Close navigation" onClick={() => setMobileMenuOpen(false)} className="fixed inset-0 top-16 z-[45] bg-[#17251d33] backdrop-blur-[1px] lg:hidden" />
         <div className="app-mobile-menu fixed inset-x-3 top-[4.5rem] z-50 rounded-3xl border border-[#dfe6d9] bg-white p-3 shadow-[0_22px_60px_-24px_#17251dcc] lg:hidden">
           <nav className="space-y-1">
             <Link
@@ -264,6 +281,7 @@ export default function AppShell({
 
           {signOutAction}
         </div>
+        </>
       )}
 
       {/* PAGE CONTENT */}
