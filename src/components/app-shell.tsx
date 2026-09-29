@@ -122,7 +122,7 @@ export default function AppShell({
   return (
     <ToastProvider>
     <TodoReminderWatcher timezone={timezone} />
-    <div className="min-h-screen bg-[#f5f6ef]">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#f5f6ef] lg:block lg:h-auto lg:min-h-screen lg:overflow-visible">
 
       {/* DESKTOP SIDEBAR */}
 
@@ -286,7 +286,7 @@ export default function AppShell({
 
       {/* PAGE CONTENT */}
 
-      <div className="workspace-surface relative pb-28 lg:pb-0 lg:pl-64">
+      <div className="workspace-surface relative min-h-0 flex-1 overflow-y-auto lg:min-h-screen lg:overflow-visible lg:pl-64">
         <div aria-hidden="true" className="workspace-decor pointer-events-none fixed inset-0 -z-0 lg:left-64" />
         <div className="relative z-[1]">
         <BetaWelcome />
@@ -296,7 +296,7 @@ export default function AppShell({
 
       {/* MOBILE BOTTOM NAVIGATION */}
 
-      <nav aria-label="Workspace" className="app-mobile-nav fixed inset-x-2 bottom-[max(.5rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-6 rounded-2xl border border-[#d9e2d5] bg-[#fcfdf8]/95 p-1 shadow-[0_16px_40px_-16px_#294d3b80] backdrop-blur lg:hidden">
+      <nav aria-label="Workspace" className="app-mobile-nav relative z-40 grid shrink-0 grid-cols-6 border-t border-[#d9e2d5] bg-[#fcfdf8] px-1 pt-1 pb-[max(.25rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-18px_#294d3b80] lg:hidden">
         {navigation.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
