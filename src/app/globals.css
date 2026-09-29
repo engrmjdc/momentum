@@ -120,3 +120,92 @@ html.dark input::placeholder,
 html.dark textarea::placeholder {
   color: #7f9082;
 }
+
+/* Dark theme: purple task and calendar surfaces */
+html.dark :is(
+  [class~="bg-[#fbfaff]"], [class~="bg-[#faf9fc]"], [class~="bg-[#faf8fd]"],
+  [class~="bg-[#faf8fc]"], [class~="bg-[#f7f5fb]"], [class~="bg-[#f4f0fa]"]
+) { background-color: #1d1926 !important; }
+
+html.dark :is(
+  [class~="bg-[#eeeafd]"], [class~="bg-[#e6def3]"], [class~="bg-[#e8e2ef]"]
+) { background-color: #2d253b !important; }
+
+html.dark :is(
+  [class~="border-[#ded8ea]"], [class~="border-[#eeeaf3]"],
+  [class~="border-[#ebe6f2]"], [class~="border-[#ddd5e8]"],
+  [class~="border-[#d9d2e5]"], [class~="border-[#cfc6df]"],
+  [class~="border-[#b9aecb]"], [class~="border-[#e5dfea]"]
+) { border-color: #50445f !important; }
+
+html.dark :is(
+  [class~="text-[#30283d]"], [class~="text-[#55426f]"],
+  [class~="text-[#66528c]"], [class~="text-[#756099]"],
+  [class~="text-[#8068aa]"]
+) { color: #d8c9f0 !important; }
+
+html.dark :is([class~="bg-[#eaf2e9]"], [class~="bg-[#bfd2bf]"]) {
+  background-color: #26392c !important;
+}
+
+html.dark .calendar-dialog-backdrop {
+  background-color: rgba(3, 10, 6, 0.68) !important;
+}
+
+html.dark .calendar-day-dialog {
+  background: #18221b !important;
+  border: 1px solid #3b4d40;
+  color: #f2f6ef;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.58);
+}
+
+html.dark .calendar-day-dialog input,
+html.dark .calendar-day-dialog textarea,
+html.dark .calendar-day-dialog select,
+html.dark .calendar-day-dialog [role="combobox"] {
+  background-color: #111a14 !important;
+  border-color: #536457 !important;
+  color: #f1f5ee !important;
+  color-scheme: dark;
+}
+
+html.dark .calendar-day-dialog input::placeholder,
+html.dark .calendar-day-dialog textarea::placeholder {
+  color: #91a094 !important;
+  opacity: 1;
+}
+
+html.dark .calendar-day-dialog :is([class~="text-gray-400"], [class~="text-gray-500"], [class~="text-gray-600"]) {
+  color: #b6c1b7 !important;
+}
+
+html.dark .calendar-day-dialog [role="listbox"] {
+  background-color: #172019 !important;
+  border-color: #536457 !important;
+}
+
+/* Dark sidebar footer */
+html.dark .app-sidebar-footer {
+  background: #111a14 !important;
+  border-color: #334338 !important;
+}
+
+html.dark .app-sidebar-footer a:not([aria-current="page"]),
+html.dark .app-sidebar-footer button {
+  color: #c4d0c5 !important;
+}
+
+html.dark .app-sidebar-footer a:not([aria-current="page"]):hover,
+html.dark .app-sidebar-footer button:hover {
+  background: #1d2c22 !important;
+  color: #eef4ec !important;
+}
+
+/* Warm clay identifies To Dos separately from green goals in Calendar. */
+html.dark :is([class~="bg-[#f4e7db]"], [class~="bg-[#d7aa83]"]) {
+  background-color: #3b2b21 !important;
+}
+
+html.dark [class~="text-[#8a5738]"] {
+  color: #edc29f !important;
+}

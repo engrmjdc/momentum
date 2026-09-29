@@ -12,11 +12,13 @@ export default async function CalendarPage({searchParams}:{searchParams:Promise<
   const today=getLocalDateKey(new Date(),profile?.timezone||"Asia/Manila"); const month=validMonth((await searchParams).month,today.slice(0,7));
   const [year,monthNumber]=month.split("-").map(Number); const first=new Date(Date.UTC(year,monthNumber-1,1));
   const gridStart=new Date(first); gridStart.setUTCDate(first.getUTCDate()-((first.getUTCDay()+6)%7)); const gridEnd=new Date(gridStart); gridEnd.setUTCDate(gridStart.getUTCDate()+41);
-  const supabase=await createClient(); const [todosResult,goalsResult]=await Promise.all([
-    supabase.from("todos").select("id,title,due_date,list_type,is_completed,completed_at,recurrence_group_id,recurrence_rule,recurrence_days,reminder_time").eq("user_id",user.id).gte("due_date",gridStart.toISOString().slice(0,10)).lte("due_date",gridEnd.toISOString().slice(0,10)).order("created_at"),
-    supabase.from("goals").select("id,name,icon,goal_schedules(day_of_week)").eq("user_id",user.id).eq("is_active",true)
+  const supabase=await createClient(); const [todosResult,goalsResult,groupsResult]=await Promise.all([
+    supabase.from("todos").select("id,title,due_date,list_type,is_completed,completed_at,recurrence_group_id,recurrence_rule,recurrence_days,reminder_time,group_id,todo_groups(id,name)").eq("user_id",user.id).gte("due_date",gridStart.toISOString().slice(0,10)).lte("due_date",gridEnd.toISOString().slice(0,10)).order("created_at"),
+    supabase.from("goals").select("id,name,icon,goal_schedules(day_of_week)").eq("user_id",user.id).eq("is_active",true),
+    supabase.from("todo_groups").select("id,name").eq("user_id",user.id).order("name")
   ]);
   const days=Array.from({length:42},(_,index)=>{const date=new Date(gridStart);date.setUTCDate(gridStart.getUTCDate()+index);return date.toISOString().slice(0,10)});
   const title=new Intl.DateTimeFormat("en-US",{month:"long",year:"numeric",timeZone:"UTC"}).format(first);
-  return <CalendarGrid userId={user.id} month={month} title={title} today={today} days={days} previousMonth={shiftMonth(month,-1)} nextMonth={shiftMonth(month,1)} todos={(todosResult.data??[]) as CalendarTodo[]} goals={(goalsResult.data??[]) as CalendarGoal[]} hasError={Boolean(todosResult.error||goalsResult.error)}/>;
+  return <CalendarGrid userId={user.id} month={month} title={title} today={today} days={days} previousMonth={shiftMonth(month,-1)} nextMonth={shiftMonth(month,1)} todos={(todosResult.data??[]) as CalendarTodo[]} goals={(goalsResult.data??[]) as CalendarGoal[]} groups={groupsResult.data??[]} hasError={Boolean(todosResult.error||goalsResult.error||groupsResult.error)}/>;
 }
+

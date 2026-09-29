@@ -181,7 +181,7 @@ export default function AppShell({
 
         {/* BOTTOM */}
 
-        <div className="relative z-10 border-t border-[#e1e8dd] bg-white/45 p-4 backdrop-blur-sm">
+        <div className="app-sidebar-footer relative z-10 border-t border-[#e1e8dd] bg-white/45 p-4 backdrop-blur-sm">
           <Link
             href="/settings"
             className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
@@ -309,3 +309,4 @@ export default function AppShell({
     </ToastProvider>
   );
 }
+
