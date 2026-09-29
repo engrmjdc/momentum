@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import MomentumSelect from "@/components/momentum-select";
 import ReminderTimeSelect from "@/components/reminder-time-select";
+import TodoEditor from "@/components/todo-editor";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
 
@@ -35,6 +36,7 @@ export default function TodoBoard({ userId, items: initialItems, groups: initial
   const [adding, setAdding] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [removing, setRemoving] = useState<TodoItem | null>(null);
+  const [editing, setEditing] = useState<TodoItem | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const router = useRouter();
@@ -100,7 +102,7 @@ export default function TodoBoard({ userId, items: initialItems, groups: initial
     return <article key={item.id} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.id); setDraggedId(item.id); }} onDragEnd={() => { setDraggedId(null); setDropTarget(null); }} className={`group flex cursor-grab items-center gap-3 rounded-2xl border px-4 py-3.5 transition active:cursor-grabbing ${draggedId === item.id ? "scale-[.99] opacity-45" : ""} ${item.is_completed ? "border-[#e3e9df] bg-[#f8faf5]" : "border-[#dfe6d9] bg-white shadow-[0_8px_22px_-18px_#294d3b] hover:border-[#a9bba5]"}`}>
       <span aria-hidden="true" title="Drag to another group" className="select-none text-xs tracking-[-2px] text-gray-300">⠿</span>
       <button disabled={busy === item.id} onClick={() => toggle(item)} aria-label={item.is_completed ? `Mark ${item.title} incomplete` : `Mark ${item.title} complete`} className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs transition ${item.is_completed ? "border-[#52735a] bg-[#52735a] text-white" : "border-[#a9bba5] bg-[#fafbf7] hover:bg-[#edf2e5]"}`}>{item.is_completed ? "✓" : ""}</button>
-      <button disabled={busy === item.id} onClick={() => toggle(item)} className={`min-w-0 flex-1 text-left text-sm font-medium ${item.is_completed ? "text-gray-400 line-through" : "text-[#24382b]"}`}>{item.title}</button>
+      <button disabled={busy === item.id} onClick={() => setEditing(item)} className={`min-w-0 flex-1 text-left text-sm font-medium ${item.is_completed ? "text-gray-400 line-through" : "text-[#24382b]"}`}><span className="block truncate">{item.title}</span><span className="mt-0.5 block text-[10px] font-normal text-gray-400 opacity-0 transition group-hover:opacity-100">Open details</span></button>
       {item.recurrence_rule !== "none" && <span title="Repeating task" className="rounded-lg bg-[#edf2e5] px-2 py-1 text-xs text-[#52735a]">↻</span>}
       {item.reminder_time && <span title={`Reminder ${item.reminder_time.slice(0, 5)}`} className="text-sm">🔔</span>}
       <select aria-label={`Move ${item.title} to a group`} value={item.group_id ?? ""} onClick={(event) => event.stopPropagation()} onChange={(event) => moveToGroup(item.id, event.target.value || null)} className="max-w-24 rounded-lg border border-[#d4dfd2] bg-[#fafbf7] px-2 py-1.5 text-xs text-[#45634c] md:hidden"><option value="">Other</option>{groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
@@ -135,6 +137,7 @@ export default function TodoBoard({ userId, items: initialItems, groups: initial
       })}</div>}
     </section>
     {mounted && removing && createPortal(<div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#18251da8] p-5" onMouseDown={(event) => { if (event.target === event.currentTarget) setRemoving(null); }}><section role="alertdialog" aria-modal="true" aria-labelledby="remove-todo-title" aria-describedby="remove-todo-description" className="w-full max-w-sm rounded-3xl border border-[#dfe6d9] bg-white p-6 shadow-[0_28px_80px_-28px_#17251dcc]"><span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-xl">🗑️</span><h2 id="remove-todo-title" className="mt-5 text-xl font-semibold text-[#24382b]">Remove this To Do?</h2><p id="remove-todo-description" className="mt-2 text-sm leading-6 text-gray-500">“{removing.title}” will be removed from this day. This cannot be undone.</p><div className="mt-6 flex gap-3"><button autoFocus disabled={busy === removing.id} onClick={() => setRemoving(null)} className="flex-1 rounded-xl border border-[#d4dfd2] bg-white px-4 py-3 text-sm font-semibold text-[#45634c] transition hover:bg-[#f5f7f1] disabled:opacity-50">Cancel</button><button disabled={busy === removing.id} onClick={() => remove(removing)} className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50">{busy === removing.id ? "Removing…" : "Remove"}</button></div></section></div>, document.body)}
+    <TodoEditor item={editing} groups={groups} onClose={() => setEditing(null)} onSaved={(saved) => { setItems((all) => all.map((item) => item.id === saved.id ? { ...item, ...saved } : item).sort((a, b) => a.due_date.localeCompare(b.due_date))); router.refresh(); }} />
   </div>;
 }
 
