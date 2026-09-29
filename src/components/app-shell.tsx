@@ -286,7 +286,7 @@ export default function AppShell({
 
       {/* PAGE CONTENT */}
 
-      <div className="workspace-surface relative lg:pl-64">
+      <div className="workspace-surface relative pb-28 lg:pb-0 lg:pl-64">
         <div aria-hidden="true" className="workspace-decor pointer-events-none fixed inset-0 -z-0 lg:left-64" />
         <div className="relative z-[1]">
         <BetaWelcome />
@@ -296,7 +296,7 @@ export default function AppShell({
 
       {/* MOBILE BOTTOM NAVIGATION */}
 
-      <nav aria-label="Workspace" className="app-mobile-nav relative z-30 mx-2 mb-[max(.5rem,env(safe-area-inset-bottom))] mt-3 grid grid-cols-6 rounded-2xl border border-[#d9e2d5] bg-[#fcfdf8]/95 p-1 shadow-[0_16px_40px_-16px_#294d3b80] backdrop-blur lg:hidden">
+      <nav aria-label="Workspace" className="app-mobile-nav fixed inset-x-2 bottom-[max(.5rem,env(safe-area-inset-bottom))] z-40 grid grid-cols-6 rounded-2xl border border-[#d9e2d5] bg-[#fcfdf8]/95 p-1 shadow-[0_16px_40px_-16px_#294d3b80] backdrop-blur lg:hidden">
         {navigation.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
