@@ -104,10 +104,6 @@ export default function AppShell({
   );
 
 
-  const firstName =
-    displayName.trim().split(/\s+/)[0] ||
-    "User";
-
   return (
     <ToastProvider>
     <TodoReminderWatcher timezone={timezone} />
@@ -241,7 +237,7 @@ export default function AppShell({
       {/* MOBILE MENU */}
 
       {mobileMenuOpen && (
-        <div className="fixed inset-x-0 top-16 z-50 border-b border-[#dfe6d9] bg-white p-4 shadow-lg lg:hidden">
+        <div className="fixed inset-x-3 top-[4.5rem] z-50 rounded-3xl border border-[#dfe6d9] bg-white p-3 shadow-[0_22px_60px_-24px_#17251dcc] lg:hidden">
           <nav className="space-y-1">
             <Link
               href="/settings"
@@ -266,17 +262,6 @@ export default function AppShell({
             </Link>
           </nav>
 
-          <div className="mt-3 flex items-center gap-3 rounded-xl bg-[#f5f6ef] p-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#dfe9e1] text-sm font-semibold text-[#45634c]">
-              {firstName
-                .charAt(0)
-                .toUpperCase()}
-            </div>
-
-            <p className="truncate text-sm font-medium text-gray-700">
-              {displayName}
-            </p>
-          </div>
           {signOutAction}
         </div>
       )}

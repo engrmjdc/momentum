@@ -36,10 +36,11 @@ export default async function TodosPage({ searchParams }: { searchParams: Promis
     supabase.from("todo_groups").select("id,name").eq("user_id", user.id).order("name"),
   ]);
 
-  return <main className="min-h-screen text-[#171717]"><div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
-    <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">To Do</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">What needs your attention?</h1><p className="mt-2 text-gray-500">Check off your tasks. Add or manage them from Calendar.</p></div><Link href="/calendar" className="self-start rounded-xl bg-[#294d3b] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#45634c]">Open calendar</Link></header>
-    <nav aria-label="To-do period" className="mt-7 inline-flex rounded-2xl border border-[#dfe6d9] bg-white p-1 shadow-sm">{(["today","week","month"] as View[]).map((item) => <Link key={item} href={item === "today" ? "/todos" : `/todos?view=${item}`} className={`rounded-xl px-5 py-2.5 text-sm font-semibold capitalize transition ${view === item ? "bg-[#edf2e5] text-[#45634c]" : "text-gray-500 hover:bg-[#f5f7f1]"}`}>{item}</Link>)}</nav>
+  return <main className="min-h-screen text-[#171717]"><div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-12">
+    <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c8772]">To Do</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">What needs your attention?</h1><p className="mt-2 text-gray-500">Check off your tasks. Add or manage them from Calendar.</p></div><Link href="/calendar" className="w-full rounded-xl bg-[#294d3b] text-center sm:w-auto px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#45634c]">Open calendar</Link></header>
+    <nav aria-label="To-do period" className="mt-6 grid w-full grid-cols-3 rounded-2xl sm:mt-7 sm:inline-flex sm:w-auto border border-[#dfe6d9] bg-white p-1 shadow-sm">{(["today","week","month"] as View[]).map((item) => <Link key={item} href={item === "today" ? "/todos" : `/todos?view=${item}`} className={`rounded-xl px-5 py-2.5 text-sm font-semibold capitalize transition ${view === item ? "bg-[#edf2e5] text-[#45634c]" : "text-gray-500 hover:bg-[#f5f7f1]"}`}>{item}</Link>)}</nav>
     {todosResult.error || groupsResult.error ? <div role="alert" className="mt-7 rounded-3xl border border-red-200 bg-white p-7 text-sm text-red-700">Could not load your tasks. Make sure migration 017 is applied, then refresh.</div> : <TodoBoard userId={user.id} items={(todosResult.data ?? []) as TodoItem[]} groups={groupsResult.data ?? []} today={today} rangeEnd={range.end} view={view} />}
   </div></main>;
 }
+
 
