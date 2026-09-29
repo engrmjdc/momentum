@@ -186,7 +186,7 @@ export default function SettingsForm({ userId, email, initialName, initialTimezo
         </div>
       </section>
 
-      <div className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-2xl border border-[#d9e2d5] bg-white/95 p-3 shadow-[0_15px_40px_-18px_#294d3b80] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative z-20 flex flex-col gap-3 rounded-2xl border border-[#d9e2d5] bg-white/95 p-3 shadow-[0_15px_40px_-18px_#294d3b80] backdrop-blur sm:sticky sm:bottom-4 sm:flex-row sm:items-center sm:justify-between">
         <div aria-live="polite" className={`px-2 text-sm ${message?.type === "error" ? "text-red-700" : "text-[#45634c]"}`}>{message?.text ?? "Changes apply to your next focus session."}</div>
         <button type="submit" disabled={saving} className="rounded-xl bg-[#45634c] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#294d3b] disabled:cursor-wait disabled:opacity-60">{saving ? "Saving…" : "Save settings"}</button>
       </div>

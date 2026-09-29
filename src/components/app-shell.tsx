@@ -201,7 +201,7 @@ export default function AppShell({
 
       {/* MOBILE HEADER */}
 
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#e3e9e3] bg-[#fcfdf8]/95 px-5 backdrop-blur lg:hidden">
+      <header className="app-mobile-header sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[#e3e9e3] bg-[#fcfdf8]/95 px-5 backdrop-blur lg:hidden">
         <Link
           href="/today"
           className="flex items-center gap-2 font-bold text-[#45634c]"
@@ -237,7 +237,7 @@ export default function AppShell({
       {/* MOBILE MENU */}
 
       {mobileMenuOpen && (
-        <div className="fixed inset-x-3 top-[4.5rem] z-50 rounded-3xl border border-[#dfe6d9] bg-white p-3 shadow-[0_22px_60px_-24px_#17251dcc] lg:hidden">
+        <div className="app-mobile-menu fixed inset-x-3 top-[4.5rem] z-50 rounded-3xl border border-[#dfe6d9] bg-white p-3 shadow-[0_22px_60px_-24px_#17251dcc] lg:hidden">
           <nav className="space-y-1">
             <Link
               href="/settings"
@@ -278,7 +278,7 @@ export default function AppShell({
 
       {/* MOBILE BOTTOM NAVIGATION */}
 
-      <nav aria-label="Workspace" className="fixed inset-x-2 bottom-2 z-40 grid grid-cols-6 rounded-2xl border border-[#d9e2d5] bg-[#fcfdf8]/95 p-1 shadow-[0_16px_40px_-16px_#294d3b80] backdrop-blur lg:hidden">
+      <nav aria-label="Workspace" className="app-mobile-nav fixed inset-x-2 bottom-2 z-40 grid grid-cols-6 rounded-2xl border border-[#d9e2d5] bg-[#fcfdf8]/95 p-1 shadow-[0_16px_40px_-16px_#294d3b80] backdrop-blur lg:hidden">
         {navigation.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (

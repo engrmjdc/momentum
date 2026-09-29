@@ -201,6 +201,28 @@ html.dark .app-sidebar-footer button:hover {
   color: #eef4ec !important;
 }
 
+html.dark .app-mobile-header,
+html.dark .app-mobile-menu,
+html.dark .app-mobile-nav {
+  background: rgba(20, 30, 23, 0.97) !important;
+  border-color: #35463a !important;
+  color: #eef3ea;
+}
+
+html.dark .app-mobile-header > a {
+  color: #dce9dc !important;
+}
+
+html.dark .app-mobile-header > button {
+  background: #1b2920 !important;
+  border-color: #425446 !important;
+  color: #e8f0e7 !important;
+}
+
+html.dark .app-mobile-nav a:not([aria-current="page"]) {
+  color: #b9c7ba !important;
+}
+
 /* Warm clay identifies To Dos separately from green goals in Calendar. */
 html.dark :is([class~="bg-[#f4e7db]"], [class~="bg-[#d7aa83]"]) {
   background-color: #3b2b21 !important;
